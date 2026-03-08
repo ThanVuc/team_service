@@ -438,6 +438,53 @@ RabbitMQ Message → Handler → UseCase → Repository → Database
 
 ---
 
+## ⏰ Workflow xử lý Scheduled Jobs
+
+### Kiến trúc Background Job Flow
+
+```
+Scheduler/Cron → Job Handler → UseCase → Repository → Database
+```
+
+### Các bước triển khai Job
+
+#### ✅ Bước 1: Tạo Job Handler
+**File:** `internal/adapter/job/[tên_job].handler.go`
+
+- [ ] Tạo handler struct với use case dependency
+- [ ] Implement job execution method
+- [ ] Call use case để xử lý logic
+- [ ] Log job execution status (start, success, error)
+- [ ] **Important**: Bắt panic errors để tránh crash
+
+#### ✅ Bước 2: Implement Business Logic
+**File:** `internal/application/usecase/[domain].usecase.go`
+
+- [ ] Thêm method xử lý job logic trong use case
+- [ ] Sử dụng transaction nếu cần (`store.ExecTx()`)
+- [ ] Handle batch processing nếu xử lý nhiều records
+
+#### ✅ Bước 3: Register Job với Scheduler
+**File:** `internal/adapter/dependency.go` hoặc scheduler setup
+
+- [ ] Khởi tạo job handler
+- [ ] Config cron expression/schedule interval
+- [ ] Register job với scheduler (cron, periodic timer, etc.)
+
+#### ✅ Bước 4: Cấu hình
+**File:** `dev.yaml` hoặc code
+
+- [ ] Job schedule/cron expression
+- [ ] Timeout settings
+- [ ] Concurrency settings (nếu cần)
+
+**Lưu ý quan trọng:**
+- Jobs nên idempotent - chạy nhiều lần không gây lỗi
+- Implement proper locking nếu job chỉ được chạy 1 instance tại 1 thời điểm
+- Log chi tiết để dễ debug và monitor
+
+---
+
 ## 🚀 Khởi chạy Service
 
 **Prerequisites:**
