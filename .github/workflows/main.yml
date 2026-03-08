@@ -8,7 +8,7 @@ on:
       - qa
 
 env:
-  CONTAINER_NAME: notification_service
+  CONTAINER_NAME: team_service
 
 jobs:
   deploy:
@@ -24,7 +24,7 @@ jobs:
 
       - name: Set image name
         id: vars
-        run: echo "IMAGE_NAME=${{ secrets.DOCKER_USERNAME }}/notification_service:latest" >> $GITHUB_ENV
+        run: echo "IMAGE_NAME=${{ secrets.DOCKER_USERNAME }}/team_service:latest" >> $GITHUB_ENV
 
       - name: Build Docker image
         run: docker build -t $IMAGE_NAME .
@@ -39,4 +39,4 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            bash /home/k3s-schedulr/scripts/deploy.sh notification-service
+            bash /home/k3s-schedulr/scripts/deploy.sh team-service

@@ -20,7 +20,7 @@ type GlobalDependency struct {
 func NewGlobalDependency() *GlobalDependency {
 	infra := infrastructure.NewDependency()
 	app := application.NewDependency(infra)
-	adapter := adapter.NewDependency(app)
+	adapter := adapter.NewDependency(app, infra)
 	transport := transport.NewDependency(infra, adapter)
 
 	g := &GlobalDependency{

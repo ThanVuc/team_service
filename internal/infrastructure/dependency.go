@@ -5,6 +5,7 @@ import (
 	"team_service/internal/infrastructure/logging"
 	"team_service/internal/infrastructure/messaging"
 	"team_service/internal/infrastructure/persistence"
+	"team_service/internal/infrastructure/persistence/store"
 	"team_service/internal/infrastructure/share/settings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,6 +18,7 @@ type Dependency struct {
 	pool     *pgxpool.Pool
 	eventBus *eventbus.RabbitMQConnector
 	config   *settings.Configuration
+	store    *store.Store
 }
 
 func NewDependency() *Dependency {
@@ -24,6 +26,14 @@ func NewDependency() *Dependency {
 }
 
 func (d *Dependency) Start(ctx context.Context) error {
+	err := d.InitInfra(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *Dependency) InitInfra(ctx context.Context) error {
 	cfg, err := settings.LoadConfiguration("")
 	if err != nil {
 		panic(err)
@@ -46,6 +56,8 @@ func (d *Dependency) Start(ctx context.Context) error {
 	if err != nil {
 		panic(err)
 	}
+
+	d.store = store.NewStore(d.pool)
 
 	return nil
 }
@@ -79,4 +91,8 @@ func (d *Dependency) GetEventBus() *eventbus.RabbitMQConnector {
 
 func (d *Dependency) GetConfig() *settings.Configuration {
 	return d.config
+}
+
+func (d *Dependency) GetStore() *store.Store {
+	return d.store
 }
