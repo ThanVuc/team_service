@@ -3,11 +3,11 @@ package adapter
 import (
 	grpccontroller "team_service/internal/adapter/gprc"
 	"team_service/internal/application"
+	"team_service/internal/infrastructure"
 )
 
 type Dependency struct {
-	app *application.Dependency
-
+	// gRPC Controllers
 	GroupController  *grpccontroller.GroupController
 	SprintController *grpccontroller.SprintController
 	WorkController   *grpccontroller.WorkController
@@ -15,15 +15,33 @@ type Dependency struct {
 
 func NewDependency(
 	applicationDependency *application.Dependency,
+	infrastructureDependency *infrastructure.Dependency,
 ) *Dependency {
+	// ===================================
+	// gRPC Controllers
+	// ===================================
+	groupController := grpccontroller.NewGroupController(
+		applicationDependency.GroupUseCase,
+		infrastructureDependency.GetLogger(),
+	)
+	sprintController := grpccontroller.NewSprintController()
+	workController := grpccontroller.NewWorkController()
+
+	// ===================================
+	// Messaging Handlers
+	// ===================================
+
+	// ===================================
+	// Job Handlers
+	// ===================================
+
 	return &Dependency{
-		app: applicationDependency,
 		// ===================================
 		// gRPC Controllers
 		// ===================================
-		GroupController:  grpccontroller.NewGroupController(),
-		SprintController: grpccontroller.NewSprintController(),
-		WorkController:   grpccontroller.NewWorkController(),
+		GroupController:  groupController,
+		SprintController: sprintController,
+		WorkController:   workController,
 
 		// ===================================
 		// Messaging Handlers
