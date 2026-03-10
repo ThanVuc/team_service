@@ -5,6 +5,7 @@ import (
 	"team_service/internal/infrastructure/logging"
 	"team_service/internal/infrastructure/messaging"
 	"team_service/internal/infrastructure/persistence"
+	"team_service/internal/infrastructure/persistence/db"
 	"team_service/internal/infrastructure/persistence/store"
 	"team_service/internal/infrastructure/share/settings"
 
@@ -51,6 +52,7 @@ func (d *Dependency) InitInfra(ctx context.Context) error {
 		panic(err)
 	}
 	d.logger.Info("Postgres pool created successfully")
+	db.NewMigrations(d.pool, d.logger)
 
 	d.eventBus, err = messaging.NewEventBus(cfg.RabbitMQ, loggerV1)
 	if err != nil {
