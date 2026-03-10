@@ -14,5 +14,8 @@ RUN go build -o team_service ./main.go
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/team_service .
+
+# copy migration files
+COPY --from=builder /app/internal/infrastructure/persistence/db/sql ./internal/infrastructure/persistence/db/sql
 RUN chmod +x /app/team_service
 ENTRYPOINT ["./team_service"]

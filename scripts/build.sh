@@ -2,11 +2,12 @@
 set -e 
 # Test before setup cicd pipeline
 DOCKER_USERNAME="sinhnguyen417"
-DOCKER_REPO="notification-service"
+DOCKER_REPO="team_service"
 DOCKER_TAG="latest"
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "🐳 Building Docker image..."
-docker build -t $DOCKER_USERNAME/$DOCKER_REPO:$DOCKER_TAG ../
+docker build -t $DOCKER_USERNAME/$DOCKER_REPO:$DOCKER_TAG $PROJECT_ROOT
 
 echo "🔐 Logging in to Docker Hub..."
 docker login -u "$DOCKER_USERNAME"
