@@ -1,5 +1,10 @@
 package coreerror
 
+
+type AppError interface {
+	Error() ErrorInfo
+}
+
 type ErrorInfo struct {
 	Code  string `json:"code"`
 	Title string `json:"title"`

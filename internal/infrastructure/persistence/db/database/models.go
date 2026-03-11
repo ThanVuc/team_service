@@ -76,6 +76,7 @@ type User struct {
 	Status    string
 	TimeZone  string
 	CreatedAt pgtype.Timestamptz
+	AvatarUrl pgtype.Text
 }
 
 type Work struct {

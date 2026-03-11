@@ -7,7 +7,141 @@ package database
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const countGroupsByOwner = `-- name: CountGroupsByOwner :one
+SELECT COUNT(*) 
+FROM groups
+WHERE owner_id = $1
+AND deleted_at IS NULL
+`
+
+func (q *Queries) CountGroupsByOwner(ctx context.Context, ownerID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countGroupsByOwner, ownerID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createGroup = `-- name: CreateGroup :one
+INSERT INTO groups (
+    id,
+    name,
+    description,
+    owner_id,
+    created_at,
+    updated_at
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    NOW(),
+    NOW()
+)
+RETURNING id, name, description, owner_id, created_at, updated_at, deleted_at
+`
+
+type CreateGroupParams struct {
+	ID          pgtype.UUID
+	Name        string
+	Description pgtype.Text
+	OwnerID     pgtype.UUID
+}
+
+func (q *Queries) CreateGroup(ctx context.Context, arg CreateGroupParams) (Group, error) {
+	row := q.db.QueryRow(ctx, createGroup,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.OwnerID,
+	)
+	var i Group
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.OwnerID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const createGroupMember = `-- name: CreateGroupMember :exec
+INSERT INTO group_members (
+    id,
+    group_id,
+    user_id,
+    role,
+    joined_at
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    now()
+)
+`
+
+type CreateGroupMemberParams struct {
+	ID      pgtype.UUID
+	GroupID pgtype.UUID
+	UserID  pgtype.UUID
+	Role    string
+}
+
+func (q *Queries) CreateGroupMember(ctx context.Context, arg CreateGroupMemberParams) error {
+	_, err := q.db.Exec(ctx, createGroupMember,
+		arg.ID,
+		arg.GroupID,
+		arg.UserID,
+		arg.Role,
+	)
+	return err
+}
+
+const getRoleByGroupIDAndUserID = `-- name: GetRoleByGroupIDAndUserID :one
+SELECT role
+FROM group_members
+WHERE group_id = $1
+AND user_id = $2
+`
+
+type GetRoleByGroupIDAndUserIDParams struct {
+	GroupID pgtype.UUID
+	UserID  pgtype.UUID
+}
+
+func (q *Queries) GetRoleByGroupIDAndUserID(ctx context.Context, arg GetRoleByGroupIDAndUserIDParams) (string, error) {
+	row := q.db.QueryRow(ctx, getRoleByGroupIDAndUserID, arg.GroupID, arg.UserID)
+	var role string
+	err := row.Scan(&role)
+	return role, err
+}
+
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, email, avatar_url
+FROM users
+WHERE id = $1
+`
+
+type GetUserByIDRow struct {
+	ID        pgtype.UUID
+	Email     string
+	AvatarUrl pgtype.Text
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id pgtype.UUID) (GetUserByIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserByID, id)
+	var i GetUserByIDRow
+	err := row.Scan(&i.ID, &i.Email, &i.AvatarUrl)
+	return i, err
+}
 
 const ping = `-- name: Ping :one
 SELECT 1

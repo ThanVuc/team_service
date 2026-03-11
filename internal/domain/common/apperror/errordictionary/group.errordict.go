@@ -12,6 +12,10 @@ type GroupErrorInfo struct {
 	Id        string
 }
 
+func (e GroupErrorInfo) Error() coreerror.ErrorInfo {
+	return e.ErrorInfo
+}
+
 var (
 	ErrGroupNotFound = GroupErrorInfo{
 		ErrorInfo: coreerror.ErrNotFound,
@@ -21,5 +25,10 @@ var (
 	ErrGroupConflict = GroupErrorInfo{
 		ErrorInfo: coreerror.ErrConflict,
 		Id:        fmt.Sprintf("%s:02", GROUP_ERROR_DOMAIN),
+	}
+
+	ErrGroupBadRequest = GroupErrorInfo{
+		ErrorInfo: coreerror.ErrBadRequest,
+		Id:        fmt.Sprintf("%s:03", GROUP_ERROR_DOMAIN),
 	}
 )

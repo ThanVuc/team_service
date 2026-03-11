@@ -29,3 +29,7 @@ func NewGroupController(
 func (c *GroupController) Ping(ctx context.Context, req *common.EmptyRequest) (*common.EmptyResponse, error) {
 	return utils.WithSafePanic(ctx, c.logger, req, c.groupUseCase.Ping)
 }
+
+func (c *GroupController) CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest) (*team_service.CreateGroupResponse, error) {
+	return utils.WithSafePanic(ctx, c.logger, req, c.groupUseCase.CreateGroup)
+}

@@ -3,14 +3,16 @@ package usecase
 import (
 	"context"
 	istore "team_service/internal/application/common/interface/store"
+	appmapper "team_service/internal/application/common/mapper"
 	"team_service/proto/common"
 
 	"github.com/wagslane/go-rabbitmq"
+	"team_service/proto/team_service"
 )
 
 type (
 	GroupUseCase interface {
-		CreateGroup(ctx context.Context) error
+		CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest) (*team_service.CreateGroupResponse, error)
 		Ping(ctx context.Context, req *common.EmptyRequest) (*common.EmptyResponse, error)
 	}
 
@@ -19,9 +21,13 @@ type (
 	}
 )
 
-func NewGroupUseCase(store istore.Store) GroupUseCase {
+func NewGroupUseCase(
+	store istore.Store,
+	mapper *appmapper.GroupMapper,
+) GroupUseCase {
 	return &groupUseCase{
-		store: store,
+		store:  store,
+		mapper: mapper,
 	}
 }
 

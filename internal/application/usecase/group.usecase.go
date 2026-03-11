@@ -3,22 +3,110 @@ package usecase
 import (
 	"context"
 	istore "team_service/internal/application/common/interface/store"
+	appmapper "team_service/internal/application/common/mapper"
+	appvalidation "team_service/internal/application/common/validation"
+	"team_service/internal/domain/common/apperror/errordictionary"
+	"team_service/internal/infrastructure/persistence/db/database"
 	"team_service/internal/infrastructure/share/utils"
 	"team_service/proto/common"
+	"team_service/proto/team_service"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type groupUseCase struct {
-	// Add any dependencies or services needed for the Group use case here
-	// Example: GroupRepository
-	store istore.Store
+	store  istore.Store
+	mapper *appmapper.GroupMapper
 }
 
-func (uc *groupUseCase) CreateGroup(ctx context.Context) error {
-	// Implement the logic to create a group using uc.groupRepo
-	return uc.store.ExecTx(ctx, func(store istore.RepositoryContainer) error {
-		// Example: Call the CreateGroup method of the GroupRepository
-		return store.GroupRepository().CreateGroup()
+func (uc *groupUseCase) CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest) (*team_service.CreateGroupResponse, error) {
+	if uc.store == nil {
+		panic("store is nil")
+	}
+
+	if uc.mapper == nil {
+		panic("mapper is nil")
+	}
+
+	if err := appvalidation.ValidateGroup(ctx, req); err != nil {
+		return &team_service.CreateGroupResponse{
+			Group: nil,
+			Error: &team_service.Error{
+				Code:    errordictionary.ErrGroupBadRequest.ErrorInfo.Code,
+				Message: errordictionary.ErrGroupBadRequest.ErrorInfo.Title,
+			},
+		}, nil
+	}
+
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
+
+	var group *database.Group
+	var user *database.GetUserByIDRow
+
+	err := uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) error {
+		count, err := repo.GroupRepository().CountGroupsByOwner(ctx, userID)
+		if err != nil {
+			return err
+		}
+		if count >= 10 {
+			return errordictionary.ErrGroupBadRequest
+		}
+
+		group, err = repo.GroupRepository().CreateGroup(ctx, req, userID)
+		if err != nil {
+			return err
+		}
+
+		user, err = repo.GroupRepository().GetUserByID(ctx, userID)
+		if err != nil {
+			return err
+		}
+
+		gm := pgtype.UUID{
+			Bytes: uuid.New(),
+			Valid: true,
+		}
+
+		err = repo.GroupRepository().AddGroupMember(ctx, database.CreateGroupMemberParams{
+			ID:      gm,
+			GroupID: group.ID,
+			UserID:  user.ID,
+			Role:    MapRole(team_service.GroupRole_GROUP_ROLE_OWNER),
+		})
+
+		return nil
 	})
+
+	if err != nil {
+		return &team_service.CreateGroupResponse{
+			Group: nil,
+			Error: &team_service.Error{
+				Code:    errordictionary.ErrGroupConflict.ErrorInfo.Code,
+				Message: err.Error(),
+			},
+		}, nil
+	}
+
+	groupM := uc.mapper.MapGroupMessage(group, user)
+
+	return &team_service.CreateGroupResponse{
+		Group: groupM,
+		Error: nil,
+	}, nil
+}
+
+func MapRole(role team_service.GroupRole) string {
+	switch role {
+	case team_service.GroupRole_GROUP_ROLE_OWNER:
+		return "owner"
+	case team_service.GroupRole_GROUP_ROLE_MANAGER:
+		return "admin"
+	case team_service.GroupRole_GROUP_ROLE_MEMBER:
+		return "member"
+	default:
+		return "member"
+	}
 }
 
 func (uc *groupUseCase) Ping(ctx context.Context, req *common.EmptyRequest) (*common.EmptyResponse, error) {

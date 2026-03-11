@@ -24,7 +24,7 @@ func NewAuthHandler(
 	consumer := eventbus.NewConsumer(
 		eventbusConnector,
 		adaptermessagingconst.AuthExchangeName,
-		eventbus.ExchangeTypeDirect,
+		eventbus.ExchangeTypeTopic,
 		adaptermessagingconst.AuthRoutingKey,
 		adaptermessagingconst.AuthQueueName,
 		adaptermessagingconst.InstanceNumber,

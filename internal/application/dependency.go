@@ -1,6 +1,7 @@
 package application
 
 import (
+	appmapper "team_service/internal/application/common/mapper"
 	"team_service/internal/application/usecase"
 	"team_service/internal/infrastructure"
 )
@@ -12,8 +13,8 @@ type Dependency struct {
 }
 
 func NewDependency(infra *infrastructure.Dependency) *Dependency {
-	groupUseCase := usecase.NewGroupUseCase(infra.GetStore())
 	userUsecase := usecase.NewUserUseCase(infra.GetStore())
+	groupUseCase := usecase.NewGroupUseCase(infra.GetStore(), &appmapper.GroupMapper{})
 
 	return &Dependency{
 		GroupUseCase: groupUseCase,
