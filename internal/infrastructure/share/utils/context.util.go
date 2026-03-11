@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 
+	"github.com/wagslane/go-rabbitmq"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -23,6 +24,18 @@ func GetUserIDFromOutgoingContext(ctx context.Context) string {
 		vals := md.Get("x-user-id")
 		if len(vals) > 0 {
 			return vals[0]
+		}
+	}
+	return ""
+}
+
+func GetRequestID(d rabbitmq.Delivery) string {
+	if v, ok := d.Headers["request_id"]; ok {
+		switch val := v.(type) {
+		case string:
+			return val
+		case []byte:
+			return string(val)
 		}
 	}
 	return ""
