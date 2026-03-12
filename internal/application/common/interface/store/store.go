@@ -14,4 +14,7 @@ type RepositoryContainer interface {
 
 type Store interface {
 	ExecTx(ctx context.Context, fn func(repo RepositoryContainer) coreerror.AppError) coreerror.AppError
+	GroupRepository() irepository.GroupRepository
+	SprintRepository() irepository.SprintRepository
+	WorkRepository() irepository.WorkRepository
 }

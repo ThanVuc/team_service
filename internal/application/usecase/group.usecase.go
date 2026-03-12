@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	irepository "team_service/internal/application/common/interface/repository"
 	istore "team_service/internal/application/common/interface/store"
 	appmapper "team_service/internal/application/common/mapper"
 	appvalidation "team_service/internal/application/common/validation"
@@ -19,6 +20,8 @@ import (
 type groupUseCase struct {
 	store  istore.Store
 	mapper *appmapper.GroupMapper
+
+	groupRepo irepository.GroupRepository
 }
 
 func (uc *groupUseCase) CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest) (*team_service.CreateGroupResponse, errorbase.AppError) {
@@ -100,11 +103,6 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *team_service.Creat
 
 	return &team_service.CreateGroupResponse{
 		Group: groupM,
-		Error: &team_service.Error{
-			Code:    err.ErrorInfo().Code,
-			Message: err.ErrorInfo().Title,
-			Details: err.ErrorInfo().Detail,
-		},
 	}, nil
 }
 

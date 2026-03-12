@@ -28,8 +28,9 @@ func NewGroupUseCase(
 	mapper *appmapper.GroupMapper,
 ) GroupUseCase {
 	return &groupUseCase{
-		store:  store,
-		mapper: mapper,
+		store:     store,
+		mapper:    mapper,
+		groupRepo: store.GroupRepository(),
 	}
 }
 

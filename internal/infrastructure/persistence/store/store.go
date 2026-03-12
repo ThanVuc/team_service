@@ -2,9 +2,12 @@ package store
 
 import (
 	"context"
+	irepository "team_service/internal/application/common/interface/repository"
 	istore "team_service/internal/application/common/interface/store"
 	coreerror "team_service/internal/domain/common/apperror"
 	errdict "team_service/internal/domain/common/apperror/err"
+	"team_service/internal/infrastructure/persistence/db/database"
+	"team_service/internal/infrastructure/persistence/repository"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -42,4 +45,16 @@ func (s *Store) ExecTx(
 	}
 
 	return nil
+}
+
+func (s *Store) GroupRepository() irepository.GroupRepository {
+	return repository.NewGroupRepository(database.New(s.pool))
+}
+
+func (s *Store) SprintRepository() irepository.SprintRepository {
+	return repository.NewSprintRepository(database.New(s.pool))
+}
+
+func (s *Store) WorkRepository() irepository.WorkRepository {
+	return repository.NewWorkRepository(database.New(s.pool))
 }
