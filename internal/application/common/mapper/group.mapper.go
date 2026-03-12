@@ -14,7 +14,7 @@ func (m *GroupMapper) MapGroupMessage(group *database.Group, user *database.GetU
 	return &team_service.GroupMessage{
 		Id:          group.ID.String(),
 		Name:        group.Name,
-		Description: group.Description.String,
+		Description: &group.Description.String,
 		Owner:       userMessage,
 		CreatedAt:   timestamppb.New(group.CreatedAt.Time),
 		UpdatedAt:   timestamppb.New(group.UpdatedAt.Time),
@@ -25,6 +25,21 @@ func (m *GroupMapper) mapSimpleUserMessage(db *database.GetUserByIDRow) *team_se
 	return &team_service.SimpleUserMessage{
 		Id:     db.ID.String(),
 		Email:  db.Email,
-		Avatar: db.AvatarUrl.String,
+		Avatar: &db.AvatarUrl.String,
+	}
+}
+
+func (m *GroupMapper) MapGroupDetail(group *database.GetGroupByIDRow, oner *database.GetUserByIDRow, memberCount int32, role team_service.GroupRole, sprintName string) *team_service.GroupMessage {
+	ownerMessage := m.mapSimpleUserMessage(oner)
+	return &team_service.GroupMessage{
+		Id:           group.ID.String(),
+		Name:         group.Name,
+		Description:  &group.Description.String,
+		Owner:        ownerMessage,
+		CreatedAt:    timestamppb.New(group.CreatedAt.Time),
+		UpdatedAt:    timestamppb.New(group.UpdatedAt.Time),
+		MemberCount:  memberCount,
+		MyRole:       role,
+		ActiveSprint: &sprintName,
 	}
 }

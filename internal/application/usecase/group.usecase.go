@@ -2,6 +2,9 @@ package usecase
 
 import (
 	"context"
+	"fmt"
+	"log"
+	irepository "team_service/internal/application/common/interface/repository"
 	istore "team_service/internal/application/common/interface/store"
 	appmapper "team_service/internal/application/common/mapper"
 	appvalidation "team_service/internal/application/common/validation"
@@ -11,14 +14,14 @@ import (
 	"team_service/internal/infrastructure/share/utils"
 	"team_service/proto/common"
 	"team_service/proto/team_service"
-
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type groupUseCase struct {
-	store  istore.Store
-	mapper *appmapper.GroupMapper
+	store      istore.Store
+	mapper     *appmapper.GroupMapper
+	groupRepos irepository.GroupRepository
 }
 
 func (uc *groupUseCase) CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest) (*team_service.CreateGroupResponse, errorbase.AppError) {
@@ -100,11 +103,6 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *team_service.Creat
 
 	return &team_service.CreateGroupResponse{
 		Group: groupM,
-		Error: &team_service.Error{
-			Code:    err.ErrorInfo().Code,
-			Message: err.ErrorInfo().Title,
-			Details: err.ErrorInfo().Detail,
-		},
 	}, nil
 }
 
@@ -126,4 +124,67 @@ func (uc *groupUseCase) Ping(ctx context.Context, req *common.EmptyRequest) (*co
 	userID := utils.GetUserIDFromOutgoingContext(ctx)
 	println("Received Ping request from user ID:", userID)
 	return &common.EmptyResponse{}, nil
+}
+
+func MapRoleToString(role string) team_service.GroupRole {
+	switch role {
+	case "owner":
+		return team_service.GroupRole_GROUP_ROLE_OWNER
+	case "admin":
+		return team_service.GroupRole_GROUP_ROLE_MANAGER
+	case "member":
+		return team_service.GroupRole_GROUP_ROLE_MEMBER
+	default:
+		return team_service.GroupRole_GROUP_ROLE_MEMBER
+	}
+}
+
+func (uc *groupUseCase) GetGroup(ctx context.Context, req *common.IDRequest) (*team_service.GetGroupResponse, errorbase.AppError) {
+	groupID, errS := uuid.Parse(req.Id)
+	if errS != nil {
+		return &team_service.GetGroupResponse{
+			Group: nil,
+			Error: &team_service.Error{
+				Code:    errdict.ErrInvalidUUID.Code,
+				Message: errdict.ErrInvalidUUID.Title,
+				Details: errdict.ErrInvalidUUID.Detail,
+			},
+		}, nil
+	}
+
+	fmt.Printf("Fetching group with ID: %s\n", groupID.String())
+
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
+
+	group, memberCount, sprint, myRole, err := repo.GroupRepository().GetGroupByID(ctx, userID, groupID.String())
+	if err != nil {
+		log.Printf("Error fetching group: %v\n", err)
+		return errorbase.New(errdict.ErrBadRequest)
+	}
+	owner, err = repo.GroupRepository().GetUserByID(ctx, group.OwnerID.String())
+	if err != nil {
+		log.Printf("Error fetching group owner: %v\n", err)
+		return errorbase.New(errdict.ErrBadRequest)
+	}
+
+	myRoleEnum := MapRoleToString(myRole)
+
+	groupDetail := uc.mapper.MapGroupDetail(group, owner, memberCount, myRoleEnum, sprint)
+
+	return nil
+
+	if err != nil {
+		return &team_service.GetGroupResponse{
+			Group: nil,
+			Error: &team_service.Error{
+				Code:    err.Error(),
+				Message: "Group not found",
+			},
+		}, nil
+	}
+
+	return &team_service.GetGroupResponse{
+		Group: groupDetail,
+		Error: nil,
+	}, nil
 }

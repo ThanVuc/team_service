@@ -12,4 +12,5 @@ type GroupRepository interface {
 	CountGroupsByOwner(ctx context.Context, ownerID string) (int64, errorbase.AppError)
 	GetUserByID(ctx context.Context, userID string) (*database.GetUserByIDRow, errorbase.AppError)
 	AddGroupMember(ctx context.Context, arg database.CreateGroupMemberParams) errorbase.AppError
+	GetGroupByID(ctx context.Context, user, groupID string) (*database.GetGroupByIDRow, int32, string, string, errorbase.AppError)
 }

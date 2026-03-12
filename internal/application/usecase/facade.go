@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	irepository "team_service/internal/application/common/interface/repository"
 	istore "team_service/internal/application/common/interface/store"
 	appmapper "team_service/internal/application/common/mapper"
 	errorbase "team_service/internal/domain/common/apperror"
@@ -16,6 +17,7 @@ type (
 	GroupUseCase interface {
 		CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest) (*team_service.CreateGroupResponse, errorbase.AppError)
 		Ping(ctx context.Context, req *common.EmptyRequest) (*common.EmptyResponse, errorbase.AppError)
+		GetGroup(ctx context.Context, req *common.IDRequest) (*team_service.GetGroupResponse, errorbase.AppError)
 	}
 
 	UserUseCase interface {
@@ -26,10 +28,12 @@ type (
 func NewGroupUseCase(
 	store istore.Store,
 	mapper *appmapper.GroupMapper,
+	groupRepo irepository.GroupRepository,
 ) GroupUseCase {
 	return &groupUseCase{
-		store:  store,
-		mapper: mapper,
+		store:      store,
+		mapper:     mapper,
+		groupRepos: groupRepo,
 	}
 }
 

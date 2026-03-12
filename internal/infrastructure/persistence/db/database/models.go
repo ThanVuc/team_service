@@ -34,6 +34,7 @@ type Group struct {
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 	DeletedAt   pgtype.Timestamptz
+	AvatarUrl   pgtype.Text
 }
 
 type GroupMember struct {

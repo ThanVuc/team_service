@@ -17,6 +17,28 @@ type GlobalDependency struct {
 	lifecycles []Lifecycle
 }
 
+// func NewGlobalDependency() *GlobalDependency {
+// 	infra := infrastructure.NewDependency()
+// 	app := application.NewDependency(infra)
+// 	adapter := adapter.NewDependency(app, infra)
+// 	transport := transport.NewDependency(infra, adapter)
+
+// 	g := &GlobalDependency{
+// 		infra:     infra,
+// 		transport: transport,
+// 		app:       app,
+// 		adapter:   adapter,
+// 	}
+
+// 	g.register(
+// 		infra,
+// 		transport,
+// 		adapter,
+// 	)
+
+// 	return g
+// }
+
 func NewGlobalDependency() *GlobalDependency {
 	infra := infrastructure.NewDependency()
 	app := application.NewDependency(infra)
@@ -25,9 +47,9 @@ func NewGlobalDependency() *GlobalDependency {
 
 	g := &GlobalDependency{
 		infra:     infra,
-		transport: transport,
 		app:       app,
 		adapter:   adapter,
+		transport: transport,
 	}
 
 	g.register(

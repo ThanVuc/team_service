@@ -4,25 +4,28 @@ import (
 	"context"
 	istore "team_service/internal/application/common/interface/store"
 	coreerror "team_service/internal/domain/common/apperror"
+	errorbase "team_service/internal/domain/common/apperror"
 	errdict "team_service/internal/domain/common/apperror/err"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Store struct {
-	pool *pgxpool.Pool
+	pool          *pgxpool.Pool
+	repocontainer *repositoryContainer
 }
 
 func NewStore(pool *pgxpool.Pool) *Store {
 	return &Store{
-		pool: pool,
+		pool:          pool,
+		repocontainer: &repositoryContainer{},
 	}
 }
 
 func (s *Store) ExecTx(
 	ctx context.Context,
-	fn func(repo istore.RepositoryContainer) coreerror.AppError,
-) coreerror.AppError {
+	fn func(repo istore.RepositoryContainer) errorbase.AppError,
+) errorbase.AppError {
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {

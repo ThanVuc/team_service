@@ -11,11 +11,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countGroupMembersByGroupID = `-- name: CountGroupMembersByGroupID :one
+SELECT COUNT(*)
+FROM group_members
+WHERE group_id = $1
+`
+
+func (q *Queries) CountGroupMembersByGroupID(ctx context.Context, groupID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countGroupMembersByGroupID, groupID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countGroupsByOwner = `-- name: CountGroupsByOwner :one
 SELECT COUNT(*) 
 FROM groups
 WHERE owner_id = $1
-AND deleted_at IS NULL
 `
 
 func (q *Queries) CountGroupsByOwner(ctx context.Context, ownerID pgtype.UUID) (int64, error) {
@@ -41,7 +53,7 @@ INSERT INTO groups (
     NOW(),
     NOW()
 )
-RETURNING id, name, description, owner_id, created_at, updated_at, deleted_at
+RETURNING id, name, description, owner_id, created_at, updated_at, deleted_at, avatar_url
 `
 
 type CreateGroupParams struct {
@@ -67,6 +79,7 @@ func (q *Queries) CreateGroup(ctx context.Context, arg CreateGroupParams) (Group
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.AvatarUrl,
 	)
 	return i, err
 }
@@ -105,6 +118,37 @@ func (q *Queries) CreateGroupMember(ctx context.Context, arg CreateGroupMemberPa
 	return err
 }
 
+const getGroupByID = `-- name: GetGroupByID :one
+SELECT id, name, description, avatar_url, owner_id, created_at, updated_at
+FROM groups
+WHERE id = $1
+`
+
+type GetGroupByIDRow struct {
+	ID          pgtype.UUID
+	Name        string
+	Description pgtype.Text
+	AvatarUrl   pgtype.Text
+	OwnerID     pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) GetGroupByID(ctx context.Context, id pgtype.UUID) (GetGroupByIDRow, error) {
+	row := q.db.QueryRow(ctx, getGroupByID, id)
+	var i GetGroupByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.AvatarUrl,
+		&i.OwnerID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getRoleByGroupIDAndUserID = `-- name: GetRoleByGroupIDAndUserID :one
 SELECT role
 FROM group_members
@@ -122,6 +166,43 @@ func (q *Queries) GetRoleByGroupIDAndUserID(ctx context.Context, arg GetRoleByGr
 	var role string
 	err := row.Scan(&role)
 	return role, err
+}
+
+const getSprintByGroupID = `-- name: GetSprintByGroupID :one
+SELECT id, name,group_id,goal, start_date, end_date,velocity_work,velocity_estimate,work_deleted
+FROM sprints
+WHERE group_id = $1
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+type GetSprintByGroupIDRow struct {
+	ID               pgtype.UUID
+	Name             string
+	GroupID          pgtype.UUID
+	Goal             pgtype.Text
+	StartDate        pgtype.Date
+	EndDate          pgtype.Date
+	VelocityWork     pgtype.Int4
+	VelocityEstimate pgtype.Float8
+	WorkDeleted      pgtype.Int4
+}
+
+func (q *Queries) GetSprintByGroupID(ctx context.Context, groupID pgtype.UUID) (GetSprintByGroupIDRow, error) {
+	row := q.db.QueryRow(ctx, getSprintByGroupID, groupID)
+	var i GetSprintByGroupIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.GroupID,
+		&i.Goal,
+		&i.StartDate,
+		&i.EndDate,
+		&i.VelocityWork,
+		&i.VelocityEstimate,
+		&i.WorkDeleted,
+	)
+	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one

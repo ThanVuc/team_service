@@ -23,8 +23,7 @@ RETURNING *;
 -- name: CountGroupsByOwner :one
 SELECT COUNT(*) 
 FROM groups
-WHERE owner_id = $1
-AND deleted_at IS NULL;
+WHERE owner_id = $1;
 
 
 -- name: GetUserByID :one 
@@ -54,3 +53,23 @@ SELECT role
 FROM group_members
 WHERE group_id = $1
 AND user_id = $2;
+
+
+-- name: GetGroupByID :one
+SELECT id, name, description, avatar_url, owner_id, created_at, updated_at
+FROM groups
+WHERE id = $1;
+
+
+-- name: CountGroupMembersByGroupID :one
+SELECT COUNT(*)
+FROM group_members
+WHERE group_id = $1;
+
+
+-- name: GetSprintByGroupID :one
+SELECT id, name,group_id,goal, start_date, end_date,velocity_work,velocity_estimate,work_deleted
+FROM sprints
+WHERE group_id = $1
+ORDER BY created_at DESC
+LIMIT 1; 

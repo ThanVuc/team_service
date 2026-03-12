@@ -30,10 +30,11 @@ func (d *Dependency) InitUseCases(ctx context.Context) error {
 	store := d.infra.GetStore()
 
 	d.UserUseCase = usecase.NewUserUseCase(store)
-
+	repoContainer := d.infra.GetRepoContainer()
 	d.GroupUseCase = usecase.NewGroupUseCase(
 		store,
 		&appmapper.GroupMapper{},
+		repoContainer.GroupRepository,
 	)
 
 	return nil

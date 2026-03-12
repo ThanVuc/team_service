@@ -50,6 +50,3 @@ var (
 	}
 )
 
-// Specialized errors can be defined in their respective domains,
-// embedding the common errorbase.ErrorInfo and adding more context if needed.
-var ()

@@ -94,3 +94,43 @@ func (r *GroupRepository) AddGroupMember(ctx context.Context, arg database.Creat
 	}
 	return nil
 }
+
+func (r *GroupRepository) GetGroupByID(ctx context.Context, user, groupID string) (*database.GetGroupByIDRow, int32, string, string, errorbase.AppError) {
+	var groupIDUUID pgtype.UUID
+	if err := groupIDUUID.Scan(groupID); err != nil {
+		return nil, 0, "", "", errorbase.Wrap(err , errdict.ErrBadRequest)
+	}
+
+	var userIDUUID pgtype.UUID
+	if err := userIDUUID.Scan(user); err != nil {
+		return nil, 0, "", "", errorbase.Wrap(err , errdict.ErrBadRequest)
+	}
+
+	group, err := r.q.GetGroupByID(ctx, groupIDUUID)
+	if err != nil {
+		return nil, 0, "", "", errorbase.Wrap(err , errdict.ErrBadRequest)
+	}
+
+	count, err := r.q.CountGroupMembersByGroupID(ctx, groupIDUUID)
+	if err != nil {
+		return nil, 0, "", "", errorbase.Wrap(err , errdict.ErrBadRequest)
+	}
+
+	sprintName := ""
+	sprint, err := r.q.GetSprintByGroupID(ctx, groupIDUUID)
+	if err == nil {
+		sprintName = sprint.Name
+	}
+
+	payload := database.GetRoleByGroupIDAndUserIDParams{
+		GroupID: groupIDUUID,
+		UserID:  userIDUUID,
+	}
+
+	myRole, err := r.q.GetRoleByGroupIDAndUserID(ctx, payload)
+	if err != nil {
+		return nil, 0, "", "", errorbase.Wrap(err , errdict.ErrBadRequest)
+	}
+
+	return &group, int32(count), sprintName, myRole, nil
+}

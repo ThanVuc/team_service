@@ -6,6 +6,7 @@ import (
 	"team_service/internal/infrastructure/messaging"
 	"team_service/internal/infrastructure/persistence"
 	"team_service/internal/infrastructure/persistence/db"
+	"team_service/internal/infrastructure/persistence/repository"
 	"team_service/internal/infrastructure/persistence/store"
 	"team_service/internal/infrastructure/share/settings"
 
@@ -15,11 +16,12 @@ import (
 )
 
 type Dependency struct {
-	logger   log.LoggerV2
-	pool     *pgxpool.Pool
-	eventBus *eventbus.RabbitMQConnector
-	config   *settings.Configuration
-	store    *store.Store
+	logger        log.LoggerV2
+	pool          *pgxpool.Pool
+	eventBus      *eventbus.RabbitMQConnector
+	config        *settings.Configuration
+	store         *store.Store
+	repoContainer *repository.RepositoryContainer
 }
 
 func NewDependency() *Dependency {
@@ -61,6 +63,8 @@ func (d *Dependency) InitInfra(ctx context.Context) error {
 
 	d.store = store.NewStore(d.pool)
 
+	d.repoContainer = repository.NewRepositoryContainer(d.pool)
+
 	return nil
 }
 
@@ -97,4 +101,8 @@ func (d *Dependency) GetConfig() *settings.Configuration {
 
 func (d *Dependency) GetStore() *store.Store {
 	return d.store
+}
+
+func (d *Dependency) GetRepoContainer() *repository.RepositoryContainer {
+	return d.repoContainer
 }

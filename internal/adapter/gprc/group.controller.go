@@ -33,3 +33,7 @@ func (c *GroupController) Ping(ctx context.Context, req *common.EmptyRequest) (*
 func (c *GroupController) CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest) (*team_service.CreateGroupResponse, error) {
 	return utils.WithSafePanic(ctx, c.logger, req, c.groupUseCase.CreateGroup)
 }
+
+func (c *GroupController) GetGroup(ctx context.Context, req *common.IDRequest) (*team_service.GetGroupResponse, error) {
+	return utils.WithSafePanic(ctx, c.logger, req, c.groupUseCase.GetGroup)
+}
