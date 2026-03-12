@@ -32,6 +32,7 @@ func NewGlobalDependency() *GlobalDependency {
 
 	g.register(
 		infra,
+		app,
 		transport,
 		adapter,
 	)

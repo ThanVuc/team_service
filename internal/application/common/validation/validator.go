@@ -3,28 +3,28 @@ package appvalidation
 import (
 	"context"
 	"strings"
-	coreerror "team_service/internal/domain/common/apperror"
-	"team_service/internal/domain/common/apperror/errordictionary"
+	errorbase "team_service/internal/domain/common/apperror"
+	errdict "team_service/internal/domain/common/apperror/err"
 	"team_service/proto/team_service"
 )
 
 // type Validator struct {}
 
-func ValidateGroup(ctx context.Context, req *team_service.CreateGroupRequest) coreerror.AppError {
+func ValidateGroup(ctx context.Context, req *team_service.CreateGroupRequest) errorbase.AppError {
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
-		return errordictionary.ErrGroupBadRequest
+		return errorbase.New(errdict.ErrBadRequest)
 	}
 	if len(name) < 3 {
-		return errordictionary.ErrGroupBadRequest
+		return errorbase.New(errdict.ErrBadRequest)
 	}
 
 	if len(name) > 100 {
-		return errordictionary.ErrGroupBadRequest
+		return errorbase.New(errdict.ErrBadRequest)
 	}
 
 	if strings.Contains(name, "<") || strings.Contains(name, ">") {
-		return errordictionary.ErrGroupBadRequest
+		return errorbase.New(errdict.ErrBadRequest)
 	}
 
 	if req.Description != nil {
@@ -32,7 +32,7 @@ func ValidateGroup(ctx context.Context, req *team_service.CreateGroupRequest) co
 
 		if desc != "" {
 			if len(desc) > 500 {
-				return errordictionary.ErrGroupBadRequest
+				return errorbase.New(errdict.ErrBadRequest)
 			}
 		}
 	}

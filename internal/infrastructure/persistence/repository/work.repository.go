@@ -1,6 +1,9 @@
 package repository
 
-import "team_service/internal/infrastructure/persistence/db/database"
+import (
+	errorbase "team_service/internal/domain/common/apperror"
+	"team_service/internal/infrastructure/persistence/db/database"
+)
 
 type WorkRepository struct {
 	q *database.Queries
@@ -14,7 +17,7 @@ func NewWorkRepository(
 	}
 }
 
-func (r *WorkRepository) CreateWork() error {
+func (r *WorkRepository) CreateWork() errorbase.AppError {
 	// Implement the logic to create a work item in the database
 	return nil
 }

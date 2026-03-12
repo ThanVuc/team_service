@@ -77,8 +77,8 @@ func ToBoolPointer(b bool) *bool {
 	return &b
 }
 
-func ToStringPointer(s string) *string {
-	return &s
+func Ptr[T any](v T) *T {
+	return &v
 }
 
 func FromTimeStampToTimePtr(timestamp *int64) *time.Time {

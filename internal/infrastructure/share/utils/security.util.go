@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	errorbase "team_service/internal/domain/common/apperror"
 	"time"
 
 	"github.com/thanvuc/go-core-lib/log"
@@ -14,22 +15,32 @@ func WithSafePanic[TReq any, TResp any](
 	ctx context.Context,
 	logger log.LoggerV2,
 	req TReq,
-	f func(context.Context, TReq) (TResp, error),
+	f func(context.Context, TReq) (TResp, errorbase.AppError),
 ) (resp TResp, err error) {
-	requestId := GetRequestIDFromOutgoingContext(ctx)
+
+	requestID := GetRequestIDFromOutgoingContext(ctx)
+
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error("Recovered from panic",
-				log.WithRequestID(requestId),
+				log.WithRequestID(requestID),
 				log.WithFields(
 					zap.Any("panic", r),
 					zap.Stack("stacktrace"),
 				),
 			)
+
+			err = fmt.Errorf("internal server error")
 		}
 	}()
 
-	return f(ctx, req)
+	resp, appErr := f(ctx, req)
+
+	if appErr != nil {
+		err = appErr
+	}
+
+	return
 }
 
 func SafeHandler(

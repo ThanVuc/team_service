@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	errorbase "team_service/internal/domain/common/apperror"
+	errdict "team_service/internal/domain/common/apperror/err"
 	"team_service/internal/infrastructure/persistence/db/database"
 	"team_service/proto/team_service"
 
@@ -19,14 +21,14 @@ func NewGroupRepository(
 	return &GroupRepository{q: q}
 }
 
-func (r *GroupRepository) CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest, userID string) (*database.Group, error) {
+func (r *GroupRepository) CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest, userID string) (*database.Group, errorbase.AppError) {
 	groupID := pgtype.UUID{
 		Bytes: uuid.New(),
 		Valid: true,
 	}
 	var ownerID pgtype.UUID
 	if err := ownerID.Scan(userID); err != nil {
-		return nil, err
+		return nil, errorbase.New(errdict.ErrInternal)
 	}
 
 	var desc pgtype.Text
@@ -44,34 +46,51 @@ func (r *GroupRepository) CreateGroup(ctx context.Context, req *team_service.Cre
 		OwnerID:     ownerID,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errorbase.New(errdict.ErrInternal)
 	}
 
 	return &group, nil
 }
 
-func (r *GroupRepository) CountGroupsByOwner(ctx context.Context, ownerID string) (int64, error) {
+func (r *GroupRepository) CountGroupsByOwner(ctx context.Context, ownerID string) (int64, errorbase.AppError) {
 	var ownerIDUUID pgtype.UUID
 	if err := ownerIDUUID.Scan(ownerID); err != nil {
-		return 0, err
+		return 0, errorbase.New(errdict.ErrInternal)
 	}
 
-	return r.q.CountGroupsByOwner(ctx, ownerIDUUID)
+	count, err := r.q.CountGroupsByOwner(ctx, ownerIDUUID)
+	if err != nil {
+		return 0, errorbase.Wrap(
+			err,
+			errdict.ErrBadRequest,
+		)
+	}
+	return count, nil
 }
 
-func (r *GroupRepository) GetUserByID(ctx context.Context, userID string) (*database.GetUserByIDRow, error) {
+func (r *GroupRepository) GetUserByID(ctx context.Context, userID string) (*database.GetUserByIDRow, errorbase.AppError) {
 	var userIDUUID pgtype.UUID
 	if err := userIDUUID.Scan(userID); err != nil {
-		return nil, err
+		return nil, errorbase.New(errdict.ErrInternal)
 	}
 	user, err := r.q.GetUserByID(ctx, userIDUUID)
 	if err != nil {
-		return nil, err
+		return nil, errorbase.Wrap(
+			err,
+			errdict.ErrBadRequest,
+		)
 	}
 
 	return &user, nil
 }
 
-func (r *GroupRepository) AddGroupMember(ctx context.Context, arg database.CreateGroupMemberParams) error {
-	return r.q.CreateGroupMember(ctx, arg)
+func (r *GroupRepository) AddGroupMember(ctx context.Context, arg database.CreateGroupMemberParams) errorbase.AppError {
+	err := r.q.CreateGroupMember(ctx, arg)
+	if err != nil {
+		return errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+		)
+	}
+	return nil
 }

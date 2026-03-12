@@ -4,16 +4,18 @@ import (
 	"context"
 	istore "team_service/internal/application/common/interface/store"
 	appmapper "team_service/internal/application/common/mapper"
+	errorbase "team_service/internal/domain/common/apperror"
 	"team_service/proto/common"
 
-	"github.com/wagslane/go-rabbitmq"
 	"team_service/proto/team_service"
+
+	"github.com/wagslane/go-rabbitmq"
 )
 
 type (
 	GroupUseCase interface {
-		CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest) (*team_service.CreateGroupResponse, error)
-		Ping(ctx context.Context, req *common.EmptyRequest) (*common.EmptyResponse, error)
+		CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest) (*team_service.CreateGroupResponse, errorbase.AppError)
+		Ping(ctx context.Context, req *common.EmptyRequest) (*common.EmptyResponse, errorbase.AppError)
 	}
 
 	UserUseCase interface {

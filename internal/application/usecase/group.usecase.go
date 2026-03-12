@@ -5,7 +5,8 @@ import (
 	istore "team_service/internal/application/common/interface/store"
 	appmapper "team_service/internal/application/common/mapper"
 	appvalidation "team_service/internal/application/common/validation"
-	"team_service/internal/domain/common/apperror/errordictionary"
+	errorbase "team_service/internal/domain/common/apperror"
+	errdict "team_service/internal/domain/common/apperror/err"
 	"team_service/internal/infrastructure/persistence/db/database"
 	"team_service/internal/infrastructure/share/utils"
 	"team_service/proto/common"
@@ -20,7 +21,7 @@ type groupUseCase struct {
 	mapper *appmapper.GroupMapper
 }
 
-func (uc *groupUseCase) CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest) (*team_service.CreateGroupResponse, error) {
+func (uc *groupUseCase) CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest) (*team_service.CreateGroupResponse, errorbase.AppError) {
 	if uc.store == nil {
 		panic("store is nil")
 	}
@@ -33,8 +34,9 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *team_service.Creat
 		return &team_service.CreateGroupResponse{
 			Group: nil,
 			Error: &team_service.Error{
-				Code:    errordictionary.ErrGroupBadRequest.ErrorInfo.Code,
-				Message: errordictionary.ErrGroupBadRequest.ErrorInfo.Title,
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Details: err.ErrorInfo().Detail,
 			},
 		}, nil
 	}
@@ -44,13 +46,14 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *team_service.Creat
 	var group *database.Group
 	var user *database.GetUserByIDRow
 
-	err := uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) error {
+	err := uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
 		count, err := repo.GroupRepository().CountGroupsByOwner(ctx, userID)
 		if err != nil {
 			return err
 		}
+
 		if count >= 10 {
-			return errordictionary.ErrGroupBadRequest
+			return errorbase.New(errdict.ErrNotFound)
 		}
 
 		group, err = repo.GroupRepository().CreateGroup(ctx, req, userID)
@@ -75,6 +78,10 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *team_service.Creat
 			Role:    MapRole(team_service.GroupRole_GROUP_ROLE_OWNER),
 		})
 
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 
@@ -82,8 +89,9 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *team_service.Creat
 		return &team_service.CreateGroupResponse{
 			Group: nil,
 			Error: &team_service.Error{
-				Code:    errordictionary.ErrGroupConflict.ErrorInfo.Code,
-				Message: err.Error(),
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Details: err.ErrorInfo().Detail,
 			},
 		}, nil
 	}
@@ -92,7 +100,11 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *team_service.Creat
 
 	return &team_service.CreateGroupResponse{
 		Group: groupM,
-		Error: nil,
+		Error: &team_service.Error{
+			Code:    err.ErrorInfo().Code,
+			Message: err.ErrorInfo().Title,
+			Details: err.ErrorInfo().Detail,
+		},
 	}, nil
 }
 
@@ -109,7 +121,7 @@ func MapRole(role team_service.GroupRole) string {
 	}
 }
 
-func (uc *groupUseCase) Ping(ctx context.Context, req *common.EmptyRequest) (*common.EmptyResponse, error) {
+func (uc *groupUseCase) Ping(ctx context.Context, req *common.EmptyRequest) (*common.EmptyResponse, errorbase.AppError) {
 	// Implement the logic for the Ping method
 	userID := utils.GetUserIDFromOutgoingContext(ctx)
 	println("Received Ping request from user ID:", userID)

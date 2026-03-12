@@ -1,48 +1,40 @@
-package coreerror
+package errorbase
 
-
-type AppError interface {
-	Error() ErrorInfo
+type appError struct {
+	info  ErrorInfo
+	cause error
 }
 
 type ErrorInfo struct {
-	Code  string `json:"code"`
-	Title string `json:"title"`
+	Code   string  `json:"code"`
+	Title  string  `json:"title"`
+	Detail *string `json:"detail,omitempty"`
 }
 
-var (
-	ErrBadRequest = ErrorInfo{
-		Code:  "ts.validation.bad-request",
-		Title: "Request invalid",
+func (e *appError) Error() string {
+	if e.cause != nil {
+		return e.cause.Error()
 	}
+	return e.info.Title
+}
 
-	ErrUnauthorized = ErrorInfo{
-		Code:  "ts.auth.unauthorized",
-		Title: "Unauthorized",
-	}
+func (e *appError) ErrorInfo() ErrorInfo {
+	return e.info
+}
 
-	ErrForbidden = ErrorInfo{
-		Code:  "ts.auth.forbidden",
-		Title: "Forbidden",
-	}
+func (e *appError) Unwrap() error {
+	return e.cause
+}
 
-	ErrNotFound = ErrorInfo{
-		Code:  "ts.resource.not-found",
-		Title: "Not Found",
+func New(info ErrorInfo) AppError {
+	return &appError{
+		info: info,
 	}
+}
 
-	ErrConflict = ErrorInfo{
-		Code:  "ts.resource.conflict",
-		Title: "Conflict",
+func Wrap(err error, info ErrorInfo) AppError {
+	return &appError{
+		info:  info,
+		cause: err,
 	}
-
-	ErrUnprocessable = ErrorInfo{
-		Code:  "ts.validation.unprocessable",
-		Title: "Unprocessable",
-	}
-
-	ErrInternal = ErrorInfo{
-		Code:  "ts.internal.error",
-		Title: "Internal Server Error",
-	}
-)
+}

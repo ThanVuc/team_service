@@ -3,6 +3,8 @@ package store
 import (
 	"context"
 	istore "team_service/internal/application/common/interface/store"
+	coreerror "team_service/internal/domain/common/apperror"
+	errdict "team_service/internal/domain/common/apperror/err"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -17,20 +19,27 @@ func NewStore(pool *pgxpool.Pool) *Store {
 	}
 }
 
-func (s *Store) ExecTx(ctx context.Context, fn func(repo istore.RepositoryContainer) error) error {
+func (s *Store) ExecTx(
+	ctx context.Context,
+	fn func(repo istore.RepositoryContainer) coreerror.AppError,
+) coreerror.AppError {
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return err
+		return coreerror.Wrap(err, errdict.ErrInternal)
 	}
+
+	defer tx.Rollback(ctx)
 
 	repos := newRepoContainer(tx)
 
-	err = fn(repos)
-	if err != nil {
-		tx.Rollback(ctx)
+	if err := fn(repos); err != nil {
 		return err
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return coreerror.Wrap(err, errdict.ErrInternal)
+	}
+
+	return nil
 }
