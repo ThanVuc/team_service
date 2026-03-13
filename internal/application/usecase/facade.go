@@ -2,20 +2,20 @@ package usecase
 
 import (
 	"context"
+	appdto "team_service/internal/application/common/dto"
 	istore "team_service/internal/application/common/interface/store"
-	appmapper "team_service/internal/application/common/mapper"
+	appvalidation "team_service/internal/application/common/validation"
 	errorbase "team_service/internal/domain/common/apperror"
 	"team_service/proto/common"
-
-	"team_service/proto/team_service"
 
 	"github.com/wagslane/go-rabbitmq"
 )
 
 type (
 	GroupUseCase interface {
-		CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest) (*team_service.CreateGroupResponse, errorbase.AppError)
+		CreateGroup(ctx context.Context, req *appdto.CreateGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError)
 		Ping(ctx context.Context, req *common.EmptyRequest) (*common.EmptyResponse, errorbase.AppError)
+		// GetGroup(ctx context.Context, req *common.IDRequest) (*team_service.GetGroupResponse, errorbase.AppError)
 	}
 
 	UserUseCase interface {
@@ -25,12 +25,12 @@ type (
 
 func NewGroupUseCase(
 	store istore.Store,
-	mapper *appmapper.GroupMapper,
+	validator *appvalidation.GroupValidator,
 ) GroupUseCase {
 	return &groupUseCase{
 		store:     store,
-		mapper:    mapper,
 		groupRepo: store.GroupRepository(),
+		validator: validator,
 	}
 }
 

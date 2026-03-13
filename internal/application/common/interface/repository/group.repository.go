@@ -3,13 +3,12 @@ package irepository
 import (
 	"context"
 	errorbase "team_service/internal/domain/common/apperror"
-	"team_service/internal/infrastructure/persistence/db/database"
-	"team_service/proto/team_service"
+	"team_service/internal/domain/entity"
 )
 
 type GroupRepository interface {
-	CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest, userID string) (*database.Group, errorbase.AppError)
+	CreateGroup(ctx context.Context, group *entity.Group, userID string) (*entity.Group, errorbase.AppError)
 	CountGroupsByOwner(ctx context.Context, ownerID string) (int64, errorbase.AppError)
-	GetUserByID(ctx context.Context, userID string) (*database.GetUserByIDRow, errorbase.AppError)
-	AddGroupMember(ctx context.Context, arg database.CreateGroupMemberParams) errorbase.AppError
+	AddGroupMember(ctx context.Context, member *entity.GroupMember) errorbase.AppError
+	// GetGroupByID(ctx context.Context, userId, groupID string) (*entity.Group, int32, string, string, errorbase.AppError)
 }

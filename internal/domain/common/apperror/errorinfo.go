@@ -11,6 +11,20 @@ type ErrorInfo struct {
 	Detail *string `json:"detail,omitempty"`
 }
 
+type Option func(*appError)
+
+func WithDetail(detail string) Option {
+	return func(e *appError) {
+		e.info.Detail = &detail
+	}
+}
+
+func WithCause(err error) Option {
+	return func(e *appError) {
+		e.cause = err
+	}
+}
+
 func (e *appError) Error() string {
 	if e.cause != nil {
 		return e.cause.Error()
@@ -26,13 +40,27 @@ func (e *appError) Unwrap() error {
 	return e.cause
 }
 
-func New(info ErrorInfo) AppError {
-	return &appError{
+func New(info ErrorInfo, opts ...Option) AppError {
+	e := &appError{
 		info: info,
 	}
+
+	for _, opt := range opts {
+		opt(e)
+	}
+
+	return e
 }
 
-func Wrap(err error, info ErrorInfo) AppError {
+func Wrap(err error, info ErrorInfo, opts ...Option) AppError {
+	e := &appError{
+		info: info,
+	}
+
+	for _, opt := range opts {
+		opt(e)
+	}
+
 	return &appError{
 		info:  info,
 		cause: err,

@@ -25,16 +25,16 @@ func NewGlobalDependency() *GlobalDependency {
 
 	g := &GlobalDependency{
 		infra:     infra,
-		transport: transport,
 		app:       app,
 		adapter:   adapter,
+		transport: transport,
 	}
 
 	g.register(
 		infra,
 		app,
-		transport,
 		adapter,
+		transport,
 	)
 
 	return g

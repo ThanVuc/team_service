@@ -1,30 +1,62 @@
 package appmapper
 
 import (
-	"team_service/internal/infrastructure/persistence/db/database"
+	appdto "team_service/internal/application/common/dto"
+	"team_service/internal/domain/entity"
+	"team_service/internal/domain/enum"
 	"team_service/proto/team_service"
-
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type GroupMapper struct{}
+func ToGroupResponse(
+	group *entity.Group,
+	owner *entity.User,
+	myRole enum.GroupRole,
+	activeSprint *string,
+	memberTotal int,
+) *appdto.GroupResponse {
 
-func (m *GroupMapper) MapGroupMessage(group *database.Group, user *database.GetUserByIDRow) *team_service.GroupMessage {
-	userMessage := m.mapSimpleUserMessage(user)
-	return &team_service.GroupMessage{
-		Id:          group.ID.String(),
-		Name:        group.Name,
-		Description: group.Description.String,
-		Owner:       userMessage,
-		CreatedAt:   timestamppb.New(group.CreatedAt.Time),
-		UpdatedAt:   timestamppb.New(group.UpdatedAt.Time),
+	var ownerDTO appdto.OwnerDTO
+	if owner != nil {
+		ownerDTO = appdto.OwnerDTO{
+			ID:     owner.ID,
+			Email:  owner.Email,
+			Avatar: owner.AvatarURL,
+		}
+	}
+
+	return &appdto.GroupResponse{
+		ID:           group.ID,
+		Name:         group.Name,
+		Description:  group.Description,
+		Owner:        ownerDTO,
+		MyRole:       myRole,
+		ActiveSprint: activeSprint,
+		MemberTotal:  memberTotal,
+		AvatarURL:    group.AvatarURL,
+		CreatedAt:    group.CreatedAt,
+		UpdatedAt:    group.UpdatedAt,
 	}
 }
 
-func (m *GroupMapper) mapSimpleUserMessage(db *database.GetUserByIDRow) *team_service.SimpleUserMessage {
+func mapSimpleUserMessage(user *entity.User) *team_service.SimpleUserMessage {
 	return &team_service.SimpleUserMessage{
-		Id:     db.ID.String(),
-		Email:  db.Email,
-		Avatar: db.AvatarUrl.String,
+		Id:     user.ID,
+		Email:  user.Email,
+		Avatar: user.AvatarURL,
 	}
 }
+
+// func MapGroupDetail(group *database.GetGroupByIDRow, owner *entity.User, memberCount int32, role team_service.GroupRole, sprintName string) *team_service.GroupMessage {
+// 	ownerMessage := mapSimpleUserMessage(owner)
+// 	return &team_service.GroupMessage{
+// 		Id:           group.ID.String(),
+// 		Name:         group.Name,
+// 		Description:  &group.Description.String,
+// 		Owner:        ownerMessage,
+// 		CreatedAt:    timestamppb.New(group.CreatedAt.Time),
+// 		UpdatedAt:    timestamppb.New(group.UpdatedAt.Time),
+// 		MemberCount:  memberCount,
+// 		MyRole:       role,
+// 		ActiveSprint: &sprintName,
+// 	}
+// }

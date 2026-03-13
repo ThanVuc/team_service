@@ -3,7 +3,7 @@ package application
 import (
 	"context"
 
-	appmapper "team_service/internal/application/common/mapper"
+	appvalidation "team_service/internal/application/common/validation"
 	"team_service/internal/application/usecase"
 	"team_service/internal/infrastructure"
 )
@@ -29,11 +29,17 @@ func (d *Dependency) Start(ctx context.Context) error {
 func (d *Dependency) InitUseCases(ctx context.Context) error {
 	store := d.infra.GetStore()
 
-	d.UserUseCase = usecase.NewUserUseCase(store)
+	// ============ validators ============
+	groupValidator := appvalidation.NewGroupValidator(
+		store.GroupRepository(),
+		store.UserRepository(),
+	)
 
+	// ============ use cases ============
+	d.UserUseCase = usecase.NewUserUseCase(store)
 	d.GroupUseCase = usecase.NewGroupUseCase(
 		store,
-		&appmapper.GroupMapper{},
+		groupValidator,
 	)
 
 	return nil

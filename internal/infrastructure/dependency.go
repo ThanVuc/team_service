@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	"context"
+	istore "team_service/internal/application/common/interface/store"
 	"team_service/internal/infrastructure/logging"
 	"team_service/internal/infrastructure/messaging"
 	"team_service/internal/infrastructure/persistence"
@@ -95,6 +96,6 @@ func (d *Dependency) GetConfig() *settings.Configuration {
 	return d.config
 }
 
-func (d *Dependency) GetStore() *store.Store {
+func (d *Dependency) GetStore() istore.Store {
 	return d.store
 }

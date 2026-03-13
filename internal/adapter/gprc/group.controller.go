@@ -2,6 +2,7 @@ package grpccontroller
 
 import (
 	"context"
+	adapermapper "team_service/internal/adapter/mapper"
 	"team_service/internal/application/usecase"
 	"team_service/internal/infrastructure/share/utils"
 	"team_service/proto/common"
@@ -31,5 +32,16 @@ func (c *GroupController) Ping(ctx context.Context, req *common.EmptyRequest) (*
 }
 
 func (c *GroupController) CreateGroup(ctx context.Context, req *team_service.CreateGroupRequest) (*team_service.CreateGroupResponse, error) {
-	return utils.WithSafePanic(ctx, c.logger, req, c.groupUseCase.CreateGroup)
+	createGroupReq := adapermapper.ToCreateGroupDTO(req)
+
+	resp, err := utils.WithSafePanic(ctx, c.logger, createGroupReq, c.groupUseCase.CreateGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapermapper.ToCreateGrouGrpcpResponse(resp), nil
 }
+
+// func (c *GroupController) GetGroup(ctx context.Context, req *common.IDRequest) (*team_service.GetGroupResponse, error) {
+// 	return utils.WithSafePanic(ctx, c.logger, req, c.groupUseCase.GetGroup)
+// }

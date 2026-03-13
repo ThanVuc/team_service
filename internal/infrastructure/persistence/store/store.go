@@ -4,57 +4,66 @@ import (
 	"context"
 	irepository "team_service/internal/application/common/interface/repository"
 	istore "team_service/internal/application/common/interface/store"
-	coreerror "team_service/internal/domain/common/apperror"
+	errorbase "team_service/internal/domain/common/apperror"
 	errdict "team_service/internal/domain/common/apperror/err"
-	"team_service/internal/infrastructure/persistence/db/database"
-	"team_service/internal/infrastructure/persistence/repository"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Store struct {
-	pool *pgxpool.Pool
+	pool          *pgxpool.Pool
+	repocontainer *repositoryContainer
 }
 
 func NewStore(pool *pgxpool.Pool) *Store {
 	return &Store{
-		pool: pool,
+		pool:          pool,
+		repocontainer: newRepoContainer(pool),
 	}
 }
 
 func (s *Store) ExecTx(
 	ctx context.Context,
-	fn func(repo istore.RepositoryContainer) coreerror.AppError,
-) coreerror.AppError {
+	fn func(repo istore.RepositoryContainer) errorbase.AppError,
+) (appErr errorbase.AppError) {
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return coreerror.Wrap(err, errdict.ErrInternal)
+		return errorbase.Wrap(err, errdict.ErrInternal)
 	}
 
-	defer tx.Rollback(ctx)
+	defer func() {
+		if appErr != nil {
+			tx.Rollback(ctx)
+		}
+	}()
 
 	repos := newRepoContainer(tx)
 
-	if err := fn(repos); err != nil {
-		return err
+	appErr = fn(repos)
+	if appErr != nil {
+		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return coreerror.Wrap(err, errdict.ErrInternal)
+		return errorbase.Wrap(err, errdict.ErrInternal)
 	}
 
 	return nil
 }
 
 func (s *Store) GroupRepository() irepository.GroupRepository {
-	return repository.NewGroupRepository(database.New(s.pool))
+	return s.repocontainer.GroupRepository()
 }
 
 func (s *Store) SprintRepository() irepository.SprintRepository {
-	return repository.NewSprintRepository(database.New(s.pool))
+	return s.repocontainer.SprintRepository()
 }
 
 func (s *Store) WorkRepository() irepository.WorkRepository {
-	return repository.NewWorkRepository(database.New(s.pool))
+	return s.repocontainer.WorkRepository()
+}
+
+func (s *Store) UserRepository() irepository.UserRepository {
+	return s.repocontainer.UserRepository()
 }
