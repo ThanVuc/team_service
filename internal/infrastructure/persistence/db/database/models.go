@@ -34,6 +34,7 @@ type Group struct {
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 	DeletedAt   pgtype.Timestamptz
+	AvatarUrl   pgtype.Text
 }
 
 type GroupMember struct {
@@ -76,6 +77,7 @@ type User struct {
 	Status    string
 	TimeZone  string
 	CreatedAt pgtype.Timestamptz
+	AvatarUrl pgtype.Text
 }
 
 type Work struct {
