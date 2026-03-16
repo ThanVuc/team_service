@@ -22,11 +22,20 @@ func Bootstrap() {
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 
 	<-sig
+	cancel()
 
 	shutdownCtx, stop := context.WithTimeout(context.Background(), 10*time.Second)
 	defer stop()
 
-	if err := deps.Stop(shutdownCtx); err != nil {
-		panic(err)
-	}
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		_ = deps.Stop(shutdownCtx)
+	}()
+
+	go func() {
+		<-sig
+		os.Exit(1)
+	}()
 }

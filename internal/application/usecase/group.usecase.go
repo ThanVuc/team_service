@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	appdto "team_service/internal/application/common/dto"
+	apphelper "team_service/internal/application/common/helper"
 	irepository "team_service/internal/application/common/interface/repository"
 	istore "team_service/internal/application/common/interface/store"
 	appmapper "team_service/internal/application/common/mapper"
@@ -19,9 +20,10 @@ import (
 )
 
 type groupUseCase struct {
-	store     istore.Store
-	groupRepo irepository.GroupRepository
-	validator *appvalidation.GroupValidator
+	store      istore.Store
+	groupRepo  irepository.GroupRepository
+	validator  *appvalidation.GroupValidator
+	authHelper *apphelper.AuthHelper
 }
 
 func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError) {
@@ -38,11 +40,18 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroup
 		}, nil
 	}
 	err = uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
+		println("repo:", repo)
+		println("group repo:", repo.GroupRepository())
+		println("user repo:", repo.UserRepository())
+		println("group:", group)
+		println("user:", user)
 		group, err = repo.GroupRepository().CreateGroup(ctx, group, user.ID)
+		println("PASS 1")
 		if err != nil {
 			return err
 		}
 
+		println("PASS 2")
 		if group == nil {
 			return errorbase.New(errdict.ErrNotFound)
 		}
@@ -51,6 +60,11 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroup
 		if err != nil {
 			return err
 		}
+
+		if user == nil {
+			return errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("The user is not found"))
+		}
+
 		groupMember, err := entity.NewGroupMember(
 			uuid.NewString(), group.ID, user.ID, enum.GroupRoleOwner, time.Now(),
 		)
@@ -76,7 +90,8 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroup
 		nil,
 		1,
 	)
-
+	println("CreatedAt: " + groupM.CreatedAt.String())
+	println("UpdatedAt: " + groupM.UpdatedAt.String())
 	return &appdto.BaseResponse[appdto.GroupResponse]{
 		Data:  groupM,
 		Error: nil,
@@ -155,3 +170,12 @@ func (uc *groupUseCase) Ping(ctx context.Context, req *common.EmptyRequest) (*co
 // 		Error: nil,
 // 	}, nil
 // }
+
+// Auth helper Example with delete
+func (uc *groupUseCase) DeleteGroup(ctx context.Context, req *common.IDRequest) (*common.EmptyResponse, errorbase.AppError) {
+	// Example: Check if the user has the required role to delete the group with req.id = groupId
+	uc.authHelper.RequireRole(ctx, req.Id, enum.GroupRoleOwner)
+
+	// Implement the logic for deleting a group
+	return &common.EmptyResponse{}, nil
+}

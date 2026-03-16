@@ -31,6 +31,7 @@ func (d *Dependency) Start(ctx context.Context) error {
 		d.infra.GetLogger(),
 		&d.infra.GetConfig().Server,
 		d.adapter,
+		d.infra.GetRecoveryPanicInterceptor(),
 	)
 
 	go d.grpcServer.Start(ctx)
@@ -39,5 +40,8 @@ func (d *Dependency) Start(ctx context.Context) error {
 }
 
 func (d *Dependency) Stop(ctx context.Context) error {
+	if d.grpcServer != nil {
+		d.grpcServer.Stop(ctx)
+	}
 	return nil
 }
