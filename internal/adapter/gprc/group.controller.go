@@ -42,6 +42,13 @@ func (c *GroupController) CreateGroup(ctx context.Context, req *team_service.Cre
 	return adapermapper.ToCreateGrouGrpcpResponse(resp), nil
 }
 
-// func (c *GroupController) GetGroup(ctx context.Context, req *common.IDRequest) (*team_service.GetGroupResponse, error) {
-// 	return utils.WithSafePanic(ctx, c.logger, req, c.groupUseCase.GetGroup)
-// }
+func (c *GroupController) GetGroup(ctx context.Context, req *common.IDRequest) (*team_service.GetGroupResponse, error) {
+	getGroupReq := adapermapper.ToGetGroupRequest(req)
+
+	resp, err := utils.WithSafePanic(ctx, c.logger, getGroupReq, c.groupUseCase.GetGroupRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapermapper.ToGetGroupGrpcResponse(resp), nil
+}

@@ -21,6 +21,7 @@ import (
 type groupUseCase struct {
 	store     istore.Store
 	groupRepo irepository.GroupRepository
+	userRepo  irepository.UserRepository
 	validator *appvalidation.GroupValidator
 }
 
@@ -90,68 +91,79 @@ func (uc *groupUseCase) Ping(ctx context.Context, req *common.EmptyRequest) (*co
 	return &common.EmptyResponse{}, nil
 }
 
-// func MapRoleToString(role string) team_service.GroupRole {
-// 	switch role {
-// 	case "owner":
-// 		return team_service.GroupRole_GROUP_ROLE_OWNER
-// 	case "admin":
-// 		return team_service.GroupRole_GROUP_ROLE_MANAGER
-// 	case "member":
-// 		return team_service.GroupRole_GROUP_ROLE_MEMBER
-// 	default:
-// 		return team_service.GroupRole_GROUP_ROLE_MEMBER
-// 	}
-// }
+func MapRoleToString(role string) enum.GroupRole {
+	switch role {
+	case "owner":
+		return enum.GroupRoleOwner
+	case "manager":
+		return enum.GroupRoleManager
+	case "member":
+		return enum.GroupRoleMember
+	default:
+		return enum.GroupRoleOwner
+	}
+}
 
-// func (uc *groupUseCase) GetGroup(ctx context.Context, req *common.IDRequest) (*team_service.GetGroupResponse, errorbase.AppError) {
-// 	groupID, errS := uuid.Parse(req.Id)
-// 	if errS != nil {
-// 		return &team_service.GetGroupResponse{
-// 			Group: nil,
-// 			Error: &team_service.Error{
-// 				Code:    errdict.ErrInvalidUUID.Code,
-// 				Message: errdict.ErrInvalidUUID.Title,
-// 				Details: errdict.ErrInvalidUUID.Detail,
-// 			},
-// 		}, nil
-// 	}
+func (uc *groupUseCase) GetGroupRequest(ctx context.Context, req *appdto.GetGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError) {
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
 
-// 	fmt.Printf("Fetching group with ID: %s\n", groupID.String())
+	group, memmberCount, sprint, err := uc.groupRepo.GetGroupByID(ctx, req.GroupID)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.GroupResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
 
-// 	userID := utils.GetUserIDFromOutgoingContext(ctx)
+	if group == nil {
+		return &appdto.BaseResponse[appdto.GroupResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    errdict.ErrNotFound.Code,
+				Message: errdict.ErrNotFound.Title,
+				Detail:  errdict.ErrNotFound.Detail,
+			},
+		}, nil
+	}
 
-// 	group, memberCount, sprint, myRole, err := uc.groupRepo.GetGroupByID(ctx, userID, groupID.String())
-// 	if err != nil {
-// 		log.Printf("Error fetching group: %v\n", err)
-// 		return &team_service.GetGroupResponse{
-// 			Group: nil,
-// 			Error: &team_service.Error{
-// 				Code:    err.ErrorInfo().Code,
-// 				Message: err.ErrorInfo().Title,
-// 				Details: err.ErrorInfo().Detail,
-// 			},
-// 		}, nil
-// 	}
+	owner, err := uc.userRepo.GetUserByID(ctx, group.OwnerID)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.GroupResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
 
-// 	owner, err := uc.groupRepo.GetUserByID(ctx, group.OwnerID.String())
-// 	if err != nil {
-// 		log.Printf("Error fetching group owner: %v\n", err)
-// 		return &team_service.GetGroupResponse{
-// 			Group: nil,
-// 			Error: &team_service.Error{
-// 				Code:    err.ErrorInfo().Code,
-// 				Message: err.ErrorInfo().Title,
-// 				Details: err.ErrorInfo().Detail,
-// 			},
-// 		}, nil
-// 	}
+	myRole, err := uc.groupRepo.GetRoleByUserIDAndGroupID(ctx, userID, req.GroupID)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.GroupResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
 
-// 	myRoleEnum := MapRoleToString(myRole)
+	groupM := appmapper.ToGroupResponse(
+		group,
+		owner,
+		MapRoleToString(myRole),
+		&sprint,
+		int(memmberCount),
+	)
 
-// 	groupDetail := appmapper.MapGroupDetail(group, owner, memberCount, myRoleEnum, sprint)
-
-// 	return &team_service.GetGroupResponse{
-// 		Group: groupDetail,
-// 		Error: nil,
-// 	}, nil
-// }
+	return &appdto.BaseResponse[appdto.GroupResponse]{
+		Data:  groupM,
+		Error: nil,
+	}, nil
+}

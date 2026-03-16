@@ -45,18 +45,3 @@ func mapSimpleUserMessage(user *entity.User) *team_service.SimpleUserMessage {
 		Avatar: user.AvatarURL,
 	}
 }
-
-// func MapGroupDetail(group *database.GetGroupByIDRow, owner *entity.User, memberCount int32, role team_service.GroupRole, sprintName string) *team_service.GroupMessage {
-// 	ownerMessage := mapSimpleUserMessage(owner)
-// 	return &team_service.GroupMessage{
-// 		Id:           group.ID.String(),
-// 		Name:         group.Name,
-// 		Description:  &group.Description.String,
-// 		Owner:        ownerMessage,
-// 		CreatedAt:    timestamppb.New(group.CreatedAt.Time),
-// 		UpdatedAt:    timestamppb.New(group.UpdatedAt.Time),
-// 		MemberCount:  memberCount,
-// 		MyRole:       role,
-// 		ActiveSprint: &sprintName,
-// 	}
-// }

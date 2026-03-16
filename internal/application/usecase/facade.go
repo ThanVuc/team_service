@@ -15,7 +15,7 @@ type (
 	GroupUseCase interface {
 		CreateGroup(ctx context.Context, req *appdto.CreateGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError)
 		Ping(ctx context.Context, req *common.EmptyRequest) (*common.EmptyResponse, errorbase.AppError)
-		// GetGroup(ctx context.Context, req *common.IDRequest) (*team_service.GetGroupResponse, errorbase.AppError)
+		GetGroupRequest(ctx context.Context, req *appdto.GetGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError)
 	}
 
 	UserUseCase interface {
@@ -30,6 +30,7 @@ func NewGroupUseCase(
 	return &groupUseCase{
 		store:     store,
 		groupRepo: store.GroupRepository(),
+		userRepo:  store.UserRepository(),
 		validator: validator,
 	}
 }
