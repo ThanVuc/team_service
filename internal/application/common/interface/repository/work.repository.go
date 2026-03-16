@@ -1,5 +1,7 @@
 package irepository
 
+import coreerror "team_service/internal/domain/common/apperror"
+
 type WorkRepository interface {
-	CreateWork() error
+	CreateWork() coreerror.AppError
 }

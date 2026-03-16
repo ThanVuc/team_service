@@ -34,6 +34,7 @@ type Group struct {
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 	DeletedAt   pgtype.Timestamptz
+	AvatarUrl   pgtype.Text
 }
 
 type GroupMember struct {
@@ -71,11 +72,13 @@ type Sprint struct {
 }
 
 type User struct {
-	ID        pgtype.UUID
-	Email     string
-	Status    string
-	TimeZone  string
-	CreatedAt pgtype.Timestamptz
+	ID                   pgtype.UUID
+	Email                string
+	Status               string
+	CreatedAt            pgtype.Timestamptz
+	AvatarUrl            pgtype.Text
+	HasEmailNotification bool
+	HasPushNotification  bool
 }
 
 type Work struct {

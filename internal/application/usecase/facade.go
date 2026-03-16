@@ -2,19 +2,48 @@ package usecase
 
 import (
 	"context"
+	appdto "team_service/internal/application/common/dto"
+	apphelper "team_service/internal/application/common/helper"
 	istore "team_service/internal/application/common/interface/store"
+	appvalidation "team_service/internal/application/common/validation"
+	errorbase "team_service/internal/domain/common/apperror"
 	"team_service/proto/common"
+
+	"github.com/thanvuc/go-core-lib/log"
+	"github.com/wagslane/go-rabbitmq"
 )
 
 type (
 	GroupUseCase interface {
-		CreateGroup(ctx context.Context) error
-		Ping(ctx context.Context, req *common.EmptyRequest) (*common.EmptyResponse, error)
+		CreateGroup(ctx context.Context, req *appdto.CreateGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError)
+		Ping(ctx context.Context, req *common.EmptyRequest) (*common.EmptyResponse, errorbase.AppError)
+		// GetGroup(ctx context.Context, req *common.IDRequest) (*team_service.GetGroupResponse, errorbase.AppError)
+	}
+
+	UserUseCase interface {
+		SyncUserData(ctx context.Context) func(d rabbitmq.Delivery) rabbitmq.Action
 	}
 )
 
-func NewGroupUseCase(store istore.Store) GroupUseCase {
+func NewGroupUseCase(
+	store istore.Store,
+	validator *appvalidation.GroupValidator,
+	authHelper *apphelper.AuthHelper,
+) GroupUseCase {
 	return &groupUseCase{
-		store: store,
+		store:      store,
+		groupRepo:  store.GroupRepository(),
+		validator:  validator,
+		authHelper: authHelper,
+	}
+}
+
+func NewUserUseCase(
+	store istore.Store,
+	logger log.LoggerV2,
+) UserUseCase {
+	return &userUseCase{
+		store:  store,
+		logger: logger,
 	}
 }
