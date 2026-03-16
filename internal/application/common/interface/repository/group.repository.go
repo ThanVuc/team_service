@@ -10,5 +10,6 @@ type GroupRepository interface {
 	CreateGroup(ctx context.Context, group *entity.Group, userID string) (*entity.Group, errorbase.AppError)
 	CountGroupsByOwner(ctx context.Context, ownerID string) (int64, errorbase.AppError)
 	AddGroupMember(ctx context.Context, member *entity.GroupMember) errorbase.AppError
-	// GetGroupByID(ctx context.Context, userId, groupID string) (*entity.Group, int32, string, string, errorbase.AppError)
+	GetGroupByID(ctx context.Context, groupID string) (*entity.Group, int32, string, errorbase.AppError)
+	GetRoleByUserIDAndGroupID(ctx context.Context, userID string, groupID string) (string, errorbase.AppError)
 }

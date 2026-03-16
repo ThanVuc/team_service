@@ -243,7 +243,7 @@ const (
 	WorkPriority_WORK_PRIORITY_UNSPECIFIED WorkPriority = 0
 	WorkPriority_WORK_PRIORITY_LOW         WorkPriority = 1
 	WorkPriority_WORK_PRIORITY_MEDIUM      WorkPriority = 2
-	WorkPriority_HIWORK_PRIORITY_HIGHGH    WorkPriority = 3
+	WorkPriority_WORK_PRIORITY_HIGH        WorkPriority = 3
 )
 
 // Enum value maps for WorkPriority.
@@ -252,13 +252,13 @@ var (
 		0: "WORK_PRIORITY_UNSPECIFIED",
 		1: "WORK_PRIORITY_LOW",
 		2: "WORK_PRIORITY_MEDIUM",
-		3: "HIWORK_PRIORITY_HIGHGH",
+		3: "WORK_PRIORITY_HIGH",
 	}
 	WorkPriority_value = map[string]int32{
 		"WORK_PRIORITY_UNSPECIFIED": 0,
 		"WORK_PRIORITY_LOW":         1,
 		"WORK_PRIORITY_MEDIUM":      2,
-		"HIWORK_PRIORITY_HIGHGH":    3,
+		"WORK_PRIORITY_HIGH":        3,
 	}
 )
 
@@ -1421,12 +1421,12 @@ const file_team_service_common_team_proto_rawDesc = "" +
 	"\x10WORK_STATUS_TODO\x10\x01\x12\x1b\n" +
 	"\x17WORK_STATUS_IN_PROGRESS\x10\x02\x12\x19\n" +
 	"\x15WORK_STATUS_IN_REVIEW\x10\x03\x12\x14\n" +
-	"\x10WORK_STATUS_DONE\x10\x04*z\n" +
+	"\x10WORK_STATUS_DONE\x10\x04*v\n" +
 	"\fWorkPriority\x12\x1d\n" +
 	"\x19WORK_PRIORITY_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11WORK_PRIORITY_LOW\x10\x01\x12\x18\n" +
-	"\x14WORK_PRIORITY_MEDIUM\x10\x02\x12\x1a\n" +
-	"\x16HIWORK_PRIORITY_HIGHGH\x10\x03B\x14Z\x12proto/team_serviceb\x06proto3"
+	"\x14WORK_PRIORITY_MEDIUM\x10\x02\x12\x16\n" +
+	"\x12WORK_PRIORITY_HIGH\x10\x03B\x14Z\x12proto/team_serviceb\x06proto3"
 
 var (
 	file_team_service_common_team_proto_rawDescOnce sync.Once

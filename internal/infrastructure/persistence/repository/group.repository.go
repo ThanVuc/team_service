@@ -202,3 +202,40 @@ func (r *GroupRepository) GetGroupByID(
 
 	return group, int32(memberCount), sprintName, nil
 }
+
+func (r *GroupRepository) GetRoleByUserIDAndGroupID(
+	ctx context.Context,
+	userID string,
+	groupID string,
+) (string, errorbase.AppError) {
+	var userUUID pgtype.UUID
+	if err := userUUID.Scan(userID); err != nil {
+		return "", errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse user id"),
+		)
+	}
+
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return "", errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	role, err := r.q.GetRoleByGroupIDAndUserID(ctx, database.GetRoleByGroupIDAndUserIDParams{
+		GroupID: groupUUID,
+		UserID:  userUUID,
+	})
+
+	if err != nil {
+		return "", errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to get role for user=%s in group=%s", userID, groupID)),
+		)
+	}
+
+	return role, nil
+}
