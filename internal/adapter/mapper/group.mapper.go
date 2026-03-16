@@ -2,7 +2,10 @@ package adapermapper
 
 import (
 	appdto "team_service/internal/application/common/dto"
+	"team_service/internal/infrastructure/share/utils"
 	"team_service/proto/team_service"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func ToCreateGroupDTO(req *team_service.CreateGroupRequest) *appdto.CreateGroupRequest {
@@ -42,6 +45,11 @@ func ToGroupMessage(group *appdto.GroupResponse) *team_service.GroupMessage {
 			Email:  group.Owner.Email,
 			Avatar: group.Owner.Avatar,
 		},
-		Avatar: *group.AvatarURL,
+		Avatar:       utils.SafeString(group.AvatarURL),
+		MyRole:       MapGroupRole(group.MyRole),
+		ActiveSprint: group.ActiveSprint,
+		MemberCount:  int32(group.MemberTotal),
+		CreatedAt:    timestamppb.New(group.CreatedAt),
+		UpdatedAt:    timestamppb.New(group.CreatedAt),
 	}
 }

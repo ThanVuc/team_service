@@ -3,11 +3,13 @@ package usecase
 import (
 	"context"
 	appdto "team_service/internal/application/common/dto"
+	apphelper "team_service/internal/application/common/helper"
 	istore "team_service/internal/application/common/interface/store"
 	appvalidation "team_service/internal/application/common/validation"
 	errorbase "team_service/internal/domain/common/apperror"
 	"team_service/proto/common"
 
+	"github.com/thanvuc/go-core-lib/log"
 	"github.com/wagslane/go-rabbitmq"
 )
 
@@ -26,16 +28,22 @@ type (
 func NewGroupUseCase(
 	store istore.Store,
 	validator *appvalidation.GroupValidator,
+	authHelper *apphelper.AuthHelper,
 ) GroupUseCase {
 	return &groupUseCase{
-		store:     store,
-		groupRepo: store.GroupRepository(),
-		validator: validator,
+		store:      store,
+		groupRepo:  store.GroupRepository(),
+		validator:  validator,
+		authHelper: authHelper,
 	}
 }
 
-func NewUserUseCase(store istore.Store) UserUseCase {
+func NewUserUseCase(
+	store istore.Store,
+	logger log.LoggerV2,
+) UserUseCase {
 	return &userUseCase{
-		store: store,
+		store:  store,
+		logger: logger,
 	}
 }

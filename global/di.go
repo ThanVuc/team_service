@@ -54,10 +54,13 @@ func (g *GlobalDependency) Start(ctx context.Context) error {
 }
 
 func (g *GlobalDependency) Stop(ctx context.Context) error {
+	var lastErr error
+
 	for i := len(g.lifecycles) - 1; i >= 0; i-- {
 		if err := g.lifecycles[i].Stop(ctx); err != nil {
-			return err
+			lastErr = err
 		}
 	}
-	return nil
+
+	return lastErr
 }

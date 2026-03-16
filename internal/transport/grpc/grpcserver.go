@@ -20,17 +20,21 @@ type TeamServer struct {
 
 	adapter *adapter.Dependency
 	server  *grpc.Server
+
+	recoveryPanicInterceptor grpc.UnaryServerInterceptor
 }
 
 func NewTeamServer(
 	logger log.LoggerV2,
 	config *settings.Server,
 	adapter *adapter.Dependency,
+	recoveryPanicInterceptor grpc.UnaryServerInterceptor,
 ) *TeamServer {
 	return &TeamServer{
-		logger:  logger,
-		config:  config,
-		adapter: adapter,
+		logger:                   logger,
+		config:                   config,
+		adapter:                  adapter,
+		recoveryPanicInterceptor: recoveryPanicInterceptor,
 	}
 }
 
@@ -44,7 +48,9 @@ func (s *TeamServer) Start(ctx context.Context) error {
 		return err
 	}
 
-	s.server = grpc.NewServer()
+	s.server = grpc.NewServer(
+		grpc.UnaryInterceptor(s.recoveryPanicInterceptor),
+	)
 
 	team_service.RegisterGroupServiceServer(
 		s.server,
@@ -60,8 +66,6 @@ func (s *TeamServer) Start(ctx context.Context) error {
 		s.server,
 		s.adapter.WorkController,
 	)
-
-	go s.Stop(ctx)
 
 	s.logger.Info(
 		fmt.Sprintf(
@@ -80,8 +84,6 @@ func (s *TeamServer) Start(ctx context.Context) error {
 }
 
 func (s *TeamServer) Stop(ctx context.Context) {
-	<-ctx.Done()
-
 	s.logger.Info("shutting down grpc server")
 
 	s.server.GracefulStop()
