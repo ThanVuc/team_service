@@ -39,11 +39,18 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroup
 		}, nil
 	}
 	err = uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
+		println("repo:", repo)
+		println("group repo:", repo.GroupRepository())
+		println("user repo:", repo.UserRepository())
+		println("group:", group)
+		println("user:", user)
 		group, err = repo.GroupRepository().CreateGroup(ctx, group, user.ID)
+		println("PASS 1")
 		if err != nil {
 			return err
 		}
 
+		println("PASS 2")
 		if group == nil {
 			return errorbase.New(errdict.ErrNotFound)
 		}
@@ -52,6 +59,11 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroup
 		if err != nil {
 			return err
 		}
+
+		if user == nil {
+			return errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("The user is not found"))
+		}
+
 		groupMember, err := entity.NewGroupMember(
 			uuid.NewString(), group.ID, user.ID, enum.GroupRoleOwner, time.Now(),
 		)
@@ -77,7 +89,8 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroup
 		nil,
 		1,
 	)
-
+	println("CreatedAt: " + groupM.CreatedAt.String())
+	println("UpdatedAt: " + groupM.UpdatedAt.String())
 	return &appdto.BaseResponse[appdto.GroupResponse]{
 		Data:  groupM,
 		Error: nil,

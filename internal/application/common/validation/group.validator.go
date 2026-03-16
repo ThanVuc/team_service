@@ -5,6 +5,7 @@ import (
 	appdto "team_service/internal/application/common/dto"
 	irepository "team_service/internal/application/common/interface/repository"
 	errorbase "team_service/internal/domain/common/apperror"
+	errdict "team_service/internal/domain/common/apperror/err"
 	"team_service/internal/domain/entity"
 	"team_service/internal/infrastructure/share/utils"
 	"time"
@@ -31,8 +32,8 @@ func (v *GroupValidator) ValidateCreateGroup(ctx context.Context, req *appdto.Cr
 	userID := utils.GetUserIDFromOutgoingContext(ctx)
 	group, err := entity.NewGroup(
 		uuid.NewString(),
-		userID,
 		req.Name,
+		userID,
 		req.Description,
 		time.Now(),
 	)
@@ -40,18 +41,28 @@ func (v *GroupValidator) ValidateCreateGroup(ctx context.Context, req *appdto.Cr
 	if err != nil {
 		return nil, nil, err
 	}
+
 	count, err := v.groupRepo.CountGroupsByOwner(ctx, userID)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if count >= 10 {
-		return nil, nil, err
+		return nil, nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user has reached the maximum number of groups"))
 	}
 
 	user, err := v.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	if group == nil {
+		return nil, nil, errorbase.New(errdict.ErrInternal, errorbase.WithDetail("group is nil"))
+	}
+
+	if user == nil {
+		return nil, nil, errorbase.New(errdict.ErrUnauthorized, errorbase.WithDetail("user not found"))
+	}
+
 	return group, user, nil
 }

@@ -1,6 +1,9 @@
 package appdto
 
-import "time"
+import (
+	"team_service/internal/domain/enum"
+	"time"
+)
 
 type UserSummaryDTO struct {
 	ID     string
@@ -17,8 +20,6 @@ type GetUserResponse struct {
 	Email  string
 	Status string
 
-	TimeZone string
-
 	AvatarURL *string
 
 	CreatedAt time.Time
@@ -31,4 +32,21 @@ type ConfigureNotificationRequest struct {
 
 type ConfigureNotificationResponse struct {
 	Success bool
+}
+
+type UserWithPermission struct {
+	ID       string
+	GroupId  string
+	Email    string
+	Status   enum.UserStatus
+	Role     enum.GroupRole
+	JoinedAt time.Time
+}
+
+type UserOutboxPayload struct {
+	UserID    string `json:"user_id"`
+	Email     string `json:"email"`
+	CreatedAt int64  `json:"created_at"`
+	Fullname  string `json:"name"`
+	AvatarUrl string `json:"avatar_url"`
 }

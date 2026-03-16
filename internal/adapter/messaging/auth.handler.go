@@ -4,7 +4,6 @@ import (
 	"context"
 	adaptermessagingconst "team_service/internal/adapter/constant/messaging"
 	"team_service/internal/application/usecase"
-	"team_service/internal/infrastructure/share/utils"
 
 	"github.com/thanvuc/go-core-lib/eventbus"
 	"github.com/thanvuc/go-core-lib/log"
@@ -37,17 +36,9 @@ func NewAuthHandler(
 	}
 }
 
-func (h *AuthHandler) Handle(ctx context.Context) {
-	utils.RetryConsumer(
+func (h *AuthHandler) Handle(ctx context.Context) error {
+	return h.consumer.Consume(
 		ctx,
-		h.logger,
-		adaptermessagingconst.RetryInterval,
-		adaptermessagingconst.HandlerName,
-		func(ctx context.Context) error {
-			return h.consumer.Consume(
-				ctx,
-				utils.SafeHandler(h.logger, h.userUseCase.SyncUserData(ctx)),
-			)
-		},
+		h.userUseCase.SyncUserData(ctx),
 	)
 }

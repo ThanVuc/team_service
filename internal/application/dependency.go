@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 
+	apphelper "team_service/internal/application/common/helper"
 	appvalidation "team_service/internal/application/common/validation"
 	"team_service/internal/application/usecase"
 	"team_service/internal/infrastructure"
@@ -35,11 +36,19 @@ func (d *Dependency) InitUseCases(ctx context.Context) error {
 		store.UserRepository(),
 	)
 
+	// ============ helper ============
+	authHelper := apphelper.NewAuthHelper(
+		store.UserRepository(),
+		d.infra.GetCacheRepository(),
+		d.infra.GetLogger(),
+	)
+
 	// ============ use cases ============
-	d.UserUseCase = usecase.NewUserUseCase(store)
+	d.UserUseCase = usecase.NewUserUseCase(store, d.infra.GetLogger())
 	d.GroupUseCase = usecase.NewGroupUseCase(
 		store,
 		groupValidator,
+		authHelper,
 	)
 
 	return nil

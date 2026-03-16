@@ -72,12 +72,13 @@ type Sprint struct {
 }
 
 type User struct {
-	ID        pgtype.UUID
-	Email     string
-	Status    string
-	TimeZone  string
-	CreatedAt pgtype.Timestamptz
-	AvatarUrl pgtype.Text
+	ID                   pgtype.UUID
+	Email                string
+	Status               string
+	CreatedAt            pgtype.Timestamptz
+	AvatarUrl            pgtype.Text
+	HasEmailNotification bool
+	HasPushNotification  bool
 }
 
 type Work struct {

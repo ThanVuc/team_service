@@ -43,7 +43,7 @@ group_id UUID NOT NULL REFERENCES groups(id),
 user_id UUID NOT NULL REFERENCES users(id),
 role VARCHAR(20) NOT NULL,
 joined_at TIMESTAMPTZ NOT NULL,
-CHECK (role IN ('owner','admin','member'))
+CHECK (role IN ('owner','manager','member'))
 );
 
 CREATE INDEX idx_group_members_group_id ON group_members(group_id);
