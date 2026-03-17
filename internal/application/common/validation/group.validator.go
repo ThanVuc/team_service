@@ -7,6 +7,7 @@ import (
 	errorbase "team_service/internal/domain/common/apperror"
 	errdict "team_service/internal/domain/common/apperror/err"
 	"team_service/internal/domain/entity"
+	"team_service/internal/domain/enum"
 	"team_service/internal/infrastructure/share/utils"
 	"time"
 
@@ -65,4 +66,82 @@ func (v *GroupValidator) ValidateCreateGroup(ctx context.Context, req *appdto.Cr
 	}
 
 	return group, user, nil
+}
+
+func (v *GroupValidator) ValidateUpdateGroup(ctx context.Context, req *appdto.UpdateGroupRequest) (*entity.Group, errorbase.AppError) {
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
+	if req.GroupID == "" {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required"))
+	}
+
+	role, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, userID, req.GroupID)
+	if err != nil {
+		return nil, err
+	}
+
+	if role != string(enum.GroupRoleOwner) && role != string(enum.GroupRoleManager) {
+		return nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user does not have permission to update the group"))
+	}
+
+	groupExists, err := v.groupRepo.CheckGroupExists(ctx, req.GroupID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !groupExists {
+		return nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("group not found"))
+	}
+
+	name := ""
+	if req.Name != nil {
+		name = *req.Name
+	}
+
+	group, err := entity.NewGroup(
+		req.GroupID,
+		name,
+		userID,
+		req.Description,
+		time.Now(),
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = group.Update(req.Name, req.Description, time.Now())
+
+	if err != nil {
+		return nil, err
+	}
+
+	return group, nil
+}
+
+func (v *GroupValidator) ValidateDeleteGroup(ctx context.Context, req *appdto.DeleteGroupRequest) errorbase.AppError {
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
+
+	if req.GroupID == "" {
+		return errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required"))
+	}
+
+	role, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, userID, req.GroupID)
+	if err != nil {
+		return err
+	}
+
+	if role != string(enum.GroupRoleOwner) {
+		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user does not have permission to delete the group"))
+	}
+
+	groupExists, err := v.groupRepo.CheckGroupExists(ctx, req.GroupID)
+	if err != nil {
+		return err
+	}
+
+	if !groupExists {
+		return errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("group not found"))
+	}
+
+	return nil
 }

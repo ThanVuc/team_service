@@ -239,3 +239,102 @@ func (r *GroupRepository) GetRoleByUserIDAndGroupID(
 
 	return role, nil
 }
+
+func (r *GroupRepository) CheckGroupExists(
+	ctx context.Context,
+	groupID string,
+) (bool, errorbase.AppError) {
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return false, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	exists, err := r.q.CheckGroupExists(ctx, groupUUID)
+	if err != nil {
+		return false, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to check if group exists id=%s", groupID)),
+		)
+	}
+
+	return exists, nil
+}
+
+func (r *GroupRepository) UpdateGroup(
+	ctx context.Context,
+	group *entity.Group,
+) (*entity.Group, errorbase.AppError) {
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(group.ID); err != nil {
+		return nil, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	var desc pgtype.Text
+	if group.Description != nil {
+		desc = pgtype.Text{
+			String: *group.Description,
+			Valid:  true,
+		}
+	}
+
+	var name pgtype.Text
+	name = pgtype.Text{
+		String: group.Name,
+		Valid:  true,
+	}
+
+	dbGroup, err := r.q.UpdateGroup(ctx, database.UpdateGroupParams{
+		ID:          groupUUID,
+		Name:        name,
+		Description: desc,
+	})
+
+	if err != nil {
+		return nil, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to update group id=%s", group.ID)),
+		)
+	}
+
+	return &entity.Group{
+		ID:          dbGroup.ID.String(),
+		Name:        dbGroup.Name,
+		Description: &dbGroup.Description.String,
+		OwnerID:     dbGroup.OwnerID.String(),
+		CreatedAt:   dbGroup.CreatedAt.Time,
+		UpdatedAt:   dbGroup.UpdatedAt.Time,
+	}, nil
+
+}
+
+func (r *GroupRepository) DeleteGroup(
+	ctx context.Context,
+	groupID string,
+) errorbase.AppError {
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	err := r.q.DeleteGroup(ctx, groupUUID)
+	if err != nil {
+		return errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to delete group id=%s", groupID)),
+		)
+	}
+
+	return nil
+}

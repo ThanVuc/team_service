@@ -98,3 +98,51 @@ func ToGetGroupGrpcResponse(
 		Error: ToProtoError(group.Error),
 	}
 }
+
+func ToUpdateGroupRequest(req *team_service.UpdateGroupRequest) *appdto.UpdateGroupRequest {
+	return &appdto.UpdateGroupRequest{
+		GroupID:     req.Id,
+		Name:        req.Name,
+		Description: req.Description,
+	}
+
+}
+
+func ToUpdateGroupGrpcResponse(
+	group *appdto.BaseResponse[appdto.GroupResponse],
+) *team_service.UpdateGroupResponse {
+	if group == nil {
+		return &team_service.UpdateGroupResponse{
+			Group: nil,
+			Error: ToProtoError(nil),
+		}
+	}
+
+	return &team_service.UpdateGroupResponse{
+		Group: ToGroupMessage(group.Data),
+		Error: ToProtoError(group.Error),
+	}
+}
+
+func ToDeleteGroupRequest(req *common.IDRequest) *appdto.DeleteGroupRequest {
+	return &appdto.DeleteGroupRequest{
+		GroupID: req.Id,
+	}
+}
+
+func ToDeleteGroupGrpcResponse(
+	resp *appdto.BaseResponse[appdto.DeleteGroupResponse],
+) *team_service.DeleteGroupResponse {
+
+	if resp == nil || resp.Data == nil {
+		return &team_service.DeleteGroupResponse{
+			Success: false,
+			Error:   ToProtoError(resp.Error),
+		}
+	}
+
+	return &team_service.DeleteGroupResponse{
+		Success: resp.Data.Success,
+		Error:   ToProtoError(resp.Error),
+	}
+}

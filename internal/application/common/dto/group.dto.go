@@ -47,3 +47,7 @@ type OwnerDTO struct {
 	Email  string
 	Avatar *string
 }
+
+type DeleteGroupResponse struct {
+	Success bool
+}
