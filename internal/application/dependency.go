@@ -13,8 +13,9 @@ type Dependency struct {
 	infra *infrastructure.Dependency
 
 	// use cases
-	GroupUseCase usecase.GroupUseCase
-	UserUseCase  usecase.UserUseCase
+	GroupUseCase  usecase.GroupUseCase
+	SprintUseCase usecase.SprintUseCase
+	UserUseCase   usecase.UserUseCase
 }
 
 func NewDependency(infra *infrastructure.Dependency) *Dependency {
@@ -36,6 +37,12 @@ func (d *Dependency) InitUseCases(ctx context.Context) error {
 		store.UserRepository(),
 	)
 
+	sprintValidator := appvalidation.NewSprintValidator(
+		store.SprintRepository(),
+		store.UserRepository(),
+		store.GroupRepository(),
+	)
+
 	// ============ helper ============
 	authHelper := apphelper.NewAuthHelper(
 		store.UserRepository(),
@@ -48,6 +55,11 @@ func (d *Dependency) InitUseCases(ctx context.Context) error {
 	d.GroupUseCase = usecase.NewGroupUseCase(
 		store,
 		groupValidator,
+		authHelper,
+	)
+	d.SprintUseCase = usecase.NewSprintUseCase(
+		store,
+		sprintValidator,
 		authHelper,
 	)
 

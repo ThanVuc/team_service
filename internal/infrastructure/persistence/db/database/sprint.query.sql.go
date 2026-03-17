@@ -33,6 +33,85 @@ func (q *Queries) CompleteActiveSprintsByGroupID(ctx context.Context, id pgtype.
 	return err
 }
 
+const createSprint = `-- name: CreateSprint :one
+INSERT INTO sprints (
+    id,
+    group_id,
+    name,
+    goal,
+    start_date,
+    end_date,
+    status,
+    velocity_work,
+    velocity_estimate,
+    work_deleted,
+    created_at,
+    updated_at
+) VALUES (
+    $1, -- id
+    $2, -- group_id
+    $3, -- name
+    $4, -- goal
+    $5, -- start_date
+    $6, -- end_date
+    'draft',
+    0,
+    0,
+    0,
+    NOW(),
+    NOW()
+)
+RETURNING
+    id,
+    group_id,
+    name,
+    goal,
+    start_date,
+    end_date,
+    status,
+    velocity_work,
+    velocity_estimate,
+    work_deleted,
+    created_at,
+    updated_at
+`
+
+type CreateSprintParams struct {
+	ID        pgtype.UUID
+	GroupID   pgtype.UUID
+	Name      string
+	Goal      pgtype.Text
+	StartDate pgtype.Date
+	EndDate   pgtype.Date
+}
+
+func (q *Queries) CreateSprint(ctx context.Context, arg CreateSprintParams) (Sprint, error) {
+	row := q.db.QueryRow(ctx, createSprint,
+		arg.ID,
+		arg.GroupID,
+		arg.Name,
+		arg.Goal,
+		arg.StartDate,
+		arg.EndDate,
+	)
+	var i Sprint
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.Name,
+		&i.Goal,
+		&i.StartDate,
+		&i.EndDate,
+		&i.Status,
+		&i.VelocityWork,
+		&i.VelocityEstimate,
+		&i.WorkDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const deleteDraftSprintsByGroupID = `-- name: DeleteDraftSprintsByGroupID :exec
 DELETE FROM sprints
 WHERE id = $1 AND status = 'draft'
@@ -81,4 +160,30 @@ func (q *Queries) GetSprintsByGroupID(ctx context.Context, groupID pgtype.UUID) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const isSprintOverlap = `-- name: IsSprintOverlap :one
+SELECT EXISTS (
+    SELECT 1
+    FROM sprints
+    WHERE group_id = $1
+      AND status != 'cancelled'
+      AND (
+            daterange(start_date, end_date, '[]')
+            && daterange($2::date, $3::date, '[]')
+          )
+) AS is_overlap
+`
+
+type IsSprintOverlapParams struct {
+	GroupID pgtype.UUID
+	Column2 pgtype.Date
+	Column3 pgtype.Date
+}
+
+func (q *Queries) IsSprintOverlap(ctx context.Context, arg IsSprintOverlapParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isSprintOverlap, arg.GroupID, arg.Column2, arg.Column3)
+	var is_overlap bool
+	err := row.Scan(&is_overlap)
+	return is_overlap, err
 }

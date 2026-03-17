@@ -121,3 +121,17 @@ func SafeStringWithDefault(ptr *string, def string) string {
 	}
 	return *ptr
 }
+
+func SafeInt32(i *int32) int32 {
+	if i == nil {
+		return 0
+	}
+	return *i
+}
+
+func SafeFloat64(f *float64) float64 {
+	if f == nil {
+		return 0
+	}
+	return *f
+}
