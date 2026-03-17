@@ -180,3 +180,133 @@ func (uc *groupUseCase) GetGroupRequest(ctx context.Context, req *appdto.GetGrou
 		Error: nil,
 	}, nil
 }
+
+func (uc *groupUseCase) UpdateGroup(ctx context.Context, req *appdto.UpdateGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError) {
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
+
+	group, err := uc.validator.ValidateUpdateGroup(ctx, req)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.GroupResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	var updatedGroup *entity.Group
+	err = uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
+		updatedGroup, err = repo.GroupRepository().UpdateGroup(ctx, group)
+		if err != nil {
+			return err
+		}
+
+		if updatedGroup == nil {
+			return errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("group not found"))
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	owner, err := uc.userRepo.GetUserByID(ctx, updatedGroup.OwnerID)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.GroupResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	myRole, err := uc.groupRepo.GetRoleByUserIDAndGroupID(ctx, userID, req.GroupID)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.GroupResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	groupM := appmapper.ToGroupResponse(
+		updatedGroup,
+		owner,
+		MapRoleToString(myRole),
+		nil,
+		0,
+	)
+
+	return &appdto.BaseResponse[appdto.GroupResponse]{
+		Data:  groupM,
+		Error: nil,
+	}, nil
+
+}
+
+func (uc *groupUseCase) DeleteGroup(ctx context.Context, req *appdto.DeleteGroupRequest) (*appdto.BaseResponse[appdto.DeleteGroupResponse], errorbase.AppError) {
+	err := uc.validator.ValidateDeleteGroup(ctx, req)
+
+	if err != nil {
+		return &appdto.BaseResponse[appdto.DeleteGroupResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	err = uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
+
+		sprints, err := repo.SprintRepository().GetSprintsByGroupID(ctx, req.GroupID)
+		if err != nil {
+			return err
+		}
+
+		for _, sprint := range sprints {
+
+			if sprint.Status == string(enum.SprintStatusDraft) {
+				err = repo.SprintRepository().DeleteDraftSprint(ctx, sprint.ID.String())
+				if err != nil {
+					return err
+				}
+			}
+
+			if sprint.Status == string(enum.SprintStatusActive) {
+				err = repo.SprintRepository().CancelSprint(ctx, sprint.ID.String())
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		err = repo.GroupRepository().DeleteGroup(ctx, req.GroupID)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &appdto.BaseResponse[appdto.DeleteGroupResponse]{
+		Data: &appdto.DeleteGroupResponse{
+			Success: true,
+		},
+		Error: nil,
+	}, nil
+}

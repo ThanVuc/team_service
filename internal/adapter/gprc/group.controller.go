@@ -52,3 +52,25 @@ func (c *GroupController) GetGroup(ctx context.Context, req *common.IDRequest) (
 
 	return adapermapper.ToGetGroupGrpcResponse(resp), nil
 }
+
+func (c *GroupController) UpdateGroup(ctx context.Context, req *team_service.UpdateGroupRequest) (*team_service.UpdateGroupResponse, error) {
+	updateGroupReq := adapermapper.ToUpdateGroupRequest(req)
+
+	resp, err := utils.WithSafePanic(ctx, c.logger, updateGroupReq, c.groupUseCase.UpdateGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapermapper.ToUpdateGroupGrpcResponse(resp), nil
+}
+
+func (c *GroupController) DeleteGroup(ctx context.Context, req *common.IDRequest) (*team_service.DeleteGroupResponse, error) {
+	deleteGroupReq := adapermapper.ToDeleteGroupRequest(req)
+
+	resp, err := utils.WithSafePanic(ctx, c.logger, deleteGroupReq, c.groupUseCase.DeleteGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapermapper.ToDeleteGroupGrpcResponse(resp), nil
+}
