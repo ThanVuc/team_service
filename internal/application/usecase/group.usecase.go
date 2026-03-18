@@ -268,15 +268,15 @@ func (uc *groupUseCase) DeleteGroup(ctx context.Context, req *appdto.DeleteGroup
 
 		for _, sprint := range sprints {
 
-			if sprint.Status == string(enum.SprintStatusDraft) {
-				err = repo.SprintRepository().DeleteDraftSprint(ctx, sprint.ID.String())
+			if sprint.Status == enum.SprintStatusDraft {
+				err = repo.SprintRepository().DeleteDraftSprint(ctx, sprint.ID)
 				if err != nil {
 					return err
 				}
 			}
 
-			if sprint.Status == string(enum.SprintStatusActive) {
-				err = repo.SprintRepository().CancelSprint(ctx, sprint.ID.String())
+			if sprint.Status == enum.SprintStatusActive {
+				err = repo.SprintRepository().CancelSprint(ctx, sprint.ID)
 				if err != nil {
 					return err
 				}
