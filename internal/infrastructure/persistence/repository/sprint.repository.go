@@ -199,7 +199,7 @@ func (r *SprintRepository) DeleteDraftSprint(ctx context.Context, sprintID strin
 func (r *SprintRepository) GetSprintsByGroupID(
 	ctx context.Context,
 	sprintID string,
-) ([]database.Sprint, errorbase.AppError) {
+) ([]*entity.Sprint, errorbase.AppError) {
 	var sprintUUID pgtype.UUID
 	if err := sprintUUID.Scan(sprintID); err != nil {
 		return nil, errorbase.New(
@@ -213,5 +213,23 @@ func (r *SprintRepository) GetSprintsByGroupID(
 		return nil, errorbase.Wrap(err, errdict.ErrInternal)
 	}
 
-	return sprints, nil
+	var result []*entity.Sprint
+	for _, sprint := range sprints {
+		result = append(result, &entity.Sprint{
+			ID:               sprint.ID.String(),
+			GroupID:          sprint.GroupID.String(),
+			Status:           enum.SprintStatus(sprint.Status),
+			Name:             sprint.Name,
+			Goal:             &sprint.Goal.String,
+			StartDate:        sprint.StartDate.Time,
+			EndDate:          sprint.EndDate.Time,
+			CreatedAt:        sprint.CreatedAt.Time,
+			UpdatedAt:        sprint.UpdatedAt.Time,
+			VelocityWork:     utils.Ptr(int32(sprint.VelocityWork.Int32)),
+			VelocityEstimate: utils.Ptr(float64(sprint.VelocityEstimate.Float64)),
+			WorkDeleted:      utils.Ptr(int32(sprint.WorkDeleted.Int32)),
+		})
+	}
+
+	return result, nil
 }
