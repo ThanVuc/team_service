@@ -14,6 +14,7 @@ import (
 type GroupController struct {
 	team_service.UnimplementedGroupServiceServer
 	groupUseCase usecase.GroupUseCase
+	userUseCase  usecase.UserUseCase
 	logger       log.LoggerV2
 }
 
@@ -73,4 +74,27 @@ func (c *GroupController) DeleteGroup(ctx context.Context, req *common.IDRequest
 	}
 
 	return adapermapper.ToDeleteGroupGrpcResponse(resp), nil
+}
+
+func (c *GroupController) ListMembers(ctx context.Context, req *team_service.ListMembersRequest) (*team_service.ListMembersResponse, error) {
+	listMembersReq := adapermapper.ToListMembersRequest(req)
+
+	resp, err := utils.WithSafePanic(ctx, c.logger, listMembersReq, c.groupUseCase.GetListGroupMembers)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapermapper.ToListMembersGrpcResponse(resp), nil
+}
+
+
+func (c *GroupController) UpdateMemberRole(ctx context.Context, req *team_service.UpdateMemberRoleRequest) (*team_service.UpdateMemberRoleResponse, error) {
+	updateMemberRoleReq := adapermapper.ToUpdateMemberRoleRequest(req)
+
+	resp, err := utils.WithSafePanic(ctx, c.logger, updateMemberRoleReq, c.groupUseCase.UpdateMemberRole)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapermapper.ToUpdateMemberRoleGrpcResponse(resp), nil
 }

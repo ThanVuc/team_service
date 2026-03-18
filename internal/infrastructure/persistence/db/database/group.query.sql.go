@@ -52,6 +52,19 @@ func (q *Queries) CountGroupsByOwner(ctx context.Context, ownerID pgtype.UUID) (
 	return count, err
 }
 
+const countManagerAndMemberByGroupID = `-- name: CountManagerAndMemberByGroupID :one
+SELECT COUNT(*)
+FROM group_members
+WHERE group_id = $1 AND role IN ('manager', 'member')
+`
+
+func (q *Queries) CountManagerAndMemberByGroupID(ctx context.Context, groupID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countManagerAndMemberByGroupID, groupID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createGroup = `-- name: CreateGroup :one
 INSERT INTO groups (
     id,
@@ -252,6 +265,48 @@ func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Group
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.AvatarUrl,
+	)
+	return i, err
+}
+
+const updateRoleMember = `-- name: UpdateRoleMember :one
+UPDATE group_members gm
+SET role = $1
+FROM users u
+WHERE gm.group_id = $2
+AND gm.user_id = $3
+AND gm.user_id = u.id
+RETURNING 
+    u.id,
+    u.email,
+    u.avatar_url,
+    gm.role,
+    gm.joined_at
+`
+
+type UpdateRoleMemberParams struct {
+	Role    string
+	GroupID pgtype.UUID
+	UserID  pgtype.UUID
+}
+
+type UpdateRoleMemberRow struct {
+	ID        pgtype.UUID
+	Email     string
+	AvatarUrl pgtype.Text
+	Role      string
+	JoinedAt  pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateRoleMember(ctx context.Context, arg UpdateRoleMemberParams) (UpdateRoleMemberRow, error) {
+	row := q.db.QueryRow(ctx, updateRoleMember, arg.Role, arg.GroupID, arg.UserID)
+	var i UpdateRoleMemberRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.AvatarUrl,
+		&i.Role,
+		&i.JoinedAt,
 	)
 	return i, err
 }

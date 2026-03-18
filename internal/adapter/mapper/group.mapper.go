@@ -32,18 +32,6 @@ func ToCreateGrouGrpcpResponse(
 	}
 }
 
-func MapEnumGroupRoleToGroupRole(role enum.GroupRole) team_service.GroupRole {
-	switch role {
-	case enum.GroupRoleOwner:
-		return team_service.GroupRole_GROUP_ROLE_OWNER
-	case enum.GroupRoleManager:
-		return team_service.GroupRole_GROUP_ROLE_MANAGER
-	case enum.GroupRoleMember:
-		return team_service.GroupRole_GROUP_ROLE_MEMBER
-	default:
-		return team_service.GroupRole_GROUP_ROLE_VIEWER
-	}
-}
 func ToGroupMessage(group *appdto.GroupResponse) *team_service.GroupMessage {
 	if group == nil {
 		return nil
@@ -70,7 +58,7 @@ func ToGroupMessage(group *appdto.GroupResponse) *team_service.GroupMessage {
 		},
 		Avatar:       avatarUrl,
 		ActiveSprint: &activeSprintId,
-		MyRole:       MapEnumGroupRoleToGroupRole(group.MyRole),
+		MyRole:       MapGroupRole(group.MyRole),
 		MemberCount:  int32(group.MemberTotal),
 		CreatedAt:    timestamppb.New(group.CreatedAt),
 		UpdatedAt:    timestamppb.New(group.UpdatedAt),
@@ -144,5 +132,78 @@ func ToDeleteGroupGrpcResponse(
 	return &team_service.DeleteGroupResponse{
 		Success: resp.Data.Success,
 		Error:   ToProtoError(resp.Error),
+	}
+}
+
+func ToListMembersRequest(req *team_service.ListMembersRequest) *appdto.ListMembersRequest {
+	return &appdto.ListMembersRequest{
+		GroupID: req.GroupId,
+	}
+}
+
+func ToListMembersGrpcResponse(
+	resp *appdto.BaseResponse[appdto.ListMembersResponse],
+) *team_service.ListMembersResponse {
+	if resp == nil || resp.Data == nil {
+		return &team_service.ListMembersResponse{
+			Members: nil,
+			Error:   ToProtoError(resp.Error),
+		}
+	}
+
+	members := make([]*team_service.MemberMessage, len(resp.Data.Members))
+	for i, member := range resp.Data.Members {
+		avatar := ""
+		if member.Avatar != nil {
+			avatar = *member.Avatar
+		}
+		members[i] = &team_service.MemberMessage{
+			Id:       member.ID,
+			Email:    member.Email,
+			Avatar:   avatar,
+			Role:     MapGroupRole(member.Role),
+			JoinedAt: timestamppb.New(member.JoinedAt),
+		}
+	}
+
+	return &team_service.ListMembersResponse{
+		Members: members,
+		Total:   int32(resp.Data.Total),
+		Error:   ToProtoError(resp.Error),
+	}
+
+}
+
+func ToUpdateMemberRoleRequest(req *team_service.UpdateMemberRoleRequest) *appdto.UpdateMemberRoleRequest {
+	return &appdto.UpdateMemberRoleRequest{
+		GroupID:  req.GroupId,
+		MemberId: req.MemberId,
+		Role:     enum.GroupRole(req.NewRole),
+	}
+}
+
+func ToUpdateMemberRoleGrpcResponse(
+	resp *appdto.BaseResponse[appdto.MemberResponse],
+) *team_service.UpdateMemberRoleResponse {
+	if resp == nil || resp.Data == nil {
+		return &team_service.UpdateMemberRoleResponse{
+			Member: nil,
+			Error:  ToProtoError(resp.Error),
+		}
+	}
+	avatar := ""
+	if resp.Data.Avatar != nil {
+		avatar = *resp.Data.Avatar
+	}
+
+	return &team_service.UpdateMemberRoleResponse{
+		Member: &team_service.MemberMessage{
+			Id:       resp.Data.ID,
+			Email:    resp.Data.Email,
+			Avatar:   avatar,
+			Role:     MapGroupRole(resp.Data.Role),
+			JoinedAt: timestamppb.New(resp.Data.JoinedAt),
+		},
+		Error: ToProtoError(resp.Error),
 	}
 }

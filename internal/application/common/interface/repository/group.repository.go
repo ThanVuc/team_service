@@ -2,6 +2,7 @@ package irepository
 
 import (
 	"context"
+	appdto "team_service/internal/application/common/dto"
 	errorbase "team_service/internal/domain/common/apperror"
 	"team_service/internal/domain/entity"
 )
@@ -15,4 +16,6 @@ type GroupRepository interface {
 	CheckGroupExists(ctx context.Context, groupID string) (bool, errorbase.AppError)
 	UpdateGroup(ctx context.Context, group *entity.Group) (*entity.Group, errorbase.AppError)
 	DeleteGroup(ctx context.Context, groupID string) errorbase.AppError
+	CountManagerAndMemberByGroupID(ctx context.Context, groupID string) (int64, errorbase.AppError)
+	UpdateMemberRole(ctx context.Context, userID string, groupID string, newRole string) (*appdto.MemberResponse, errorbase.AppError)
 }

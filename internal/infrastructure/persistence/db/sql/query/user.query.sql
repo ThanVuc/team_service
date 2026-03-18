@@ -45,3 +45,17 @@ SET
     avatar_url = EXCLUDED.avatar_url,
     has_email_notification = EXCLUDED.has_email_notification,
     has_push_notification = EXCLUDED.has_push_notification;
+
+
+-- name: GetListGroupMembers :many
+SELECT 
+    u.id,
+    u.email,
+    u.avatar_url AS avatar,
+    gm.role,
+    gm.joined_at
+FROM group_members gm
+JOIN users u ON gm.user_id = u.id
+WHERE gm.group_id = $1
+ORDER BY gm.joined_at;
+
