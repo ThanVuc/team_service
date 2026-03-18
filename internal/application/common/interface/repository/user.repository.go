@@ -11,4 +11,5 @@ type UserRepository interface {
 	GetUserByID(ctx context.Context, userID string) (*entity.User, errorbase.AppError)
 	GetUserWithPermissionByID(ctx context.Context, userID string, groupId string) (*appdto.UserWithPermission, errorbase.AppError)
 	UpsertUser(ctx context.Context, user *entity.User) errorbase.AppError
+	GetListMembersByGroupID(ctx context.Context, groupID string) (*appdto.ListMembersResponse, errorbase.AppError)
 }

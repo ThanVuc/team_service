@@ -302,3 +302,100 @@ func (uc *groupUseCase) DeleteGroup(ctx context.Context, req *appdto.DeleteGroup
 		Error: nil,
 	}, nil
 }
+
+func (uc *groupUseCase) GetListGroupMembers(ctx context.Context, req *appdto.ListMembersRequest) (*appdto.BaseResponse[appdto.ListMembersResponse], errorbase.AppError) {
+	err := uc.validator.ValidateGetListGroupMembers(ctx, req)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.ListMembersResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	members, err := uc.store.UserRepository().GetListMembersByGroupID(ctx, req.GroupID)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.ListMembersResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	return &appdto.BaseResponse[appdto.ListMembersResponse]{
+		Data:  members,
+		Error: nil,
+	}, nil
+}
+
+func (uc *groupUseCase) UpdateMemberRole(ctx context.Context, req *appdto.UpdateMemberRoleRequest) (*appdto.BaseResponse[appdto.MemberResponse], errorbase.AppError) {
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
+
+	err := uc.validator.ValidateUpdateMemberRole(ctx, req)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.MemberResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	myRole, err := uc.groupRepo.GetRoleByUserIDAndGroupID(ctx, userID, req.GroupID)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.MemberResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	var newRoler *appdto.MemberResponse
+	err = uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
+		if req.Role == enum.GroupRoleOwner && myRole == string(enum.GroupRoleOwner) {
+			newRoler, err = repo.GroupRepository().UpdateMemberRole(ctx, req.MemberId, req.GroupID, string(enum.GroupRoleOwner))
+			if err != nil {
+				return err
+			}
+
+			_, err = repo.GroupRepository().UpdateMemberRole(ctx, userID, req.GroupID, string(enum.GroupRoleManager))
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
+		newRoler, err = repo.GroupRepository().UpdateMemberRole(ctx, req.MemberId, req.GroupID, string(req.Role))
+		if err != nil {
+			return err
+		}
+
+		if newRoler == nil {
+			return errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("member not found"))
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &appdto.BaseResponse[appdto.MemberResponse]{
+		Data:  newRoler,
+		Error: nil,
+	}, nil
+
+}

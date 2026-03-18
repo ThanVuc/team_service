@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	appdto "team_service/internal/application/common/dto"
 	errorbase "team_service/internal/domain/common/apperror"
 	errdict "team_service/internal/domain/common/apperror/err"
 	"team_service/internal/domain/entity"
+	"team_service/internal/domain/enum"
 	"team_service/internal/infrastructure/persistence/db/database"
+	"team_service/internal/infrastructure/share/utils"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -337,4 +340,73 @@ func (r *GroupRepository) DeleteGroup(
 	}
 
 	return nil
+}
+
+func (r *GroupRepository) CountManagerAndMemberByGroupID(
+	ctx context.Context,
+	groupID string,
+) (int64, errorbase.AppError) {
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return 0, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	count, err := r.q.CountManagerAndMemberByGroupID(ctx, groupUUID)
+	if err != nil {
+		return 0, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to count manager and member for group=%s", groupID)),
+		)
+	}
+
+	return count, nil
+}
+
+func (r *GroupRepository) UpdateMemberRole(
+	ctx context.Context,
+	userID string,
+	groupID string,
+	newRole string,
+) (*appdto.MemberResponse, errorbase.AppError) {
+	var userUUID pgtype.UUID
+	if err := userUUID.Scan(userID); err != nil {
+		return nil, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse user id"),
+		)
+	}
+
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return nil, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	member, err := r.q.UpdateRoleMember(ctx, database.UpdateRoleMemberParams{
+		UserID:  userUUID,
+		GroupID: groupUUID,
+		Role:    newRole,
+	})
+
+	if err != nil {
+		return nil, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to update member role user=%s in group=%s", userID, groupID)),
+		)
+	}
+
+	return &appdto.MemberResponse{
+		ID:       member.ID.String(),
+		Email:    member.Email,
+		Avatar:   utils.Ptr(member.AvatarUrl.String),
+		Role:     enum.GroupRole(member.Role),
+		JoinedAt: member.JoinedAt.Time,
+	}, nil
 }

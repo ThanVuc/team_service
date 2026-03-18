@@ -11,6 +11,53 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getListGroupMembers = `-- name: GetListGroupMembers :many
+SELECT 
+    u.id,
+    u.email,
+    u.avatar_url AS avatar,
+    gm.role,
+    gm.joined_at
+FROM group_members gm
+JOIN users u ON gm.user_id = u.id
+WHERE gm.group_id = $1
+ORDER BY gm.joined_at
+`
+
+type GetListGroupMembersRow struct {
+	ID       pgtype.UUID
+	Email    string
+	Avatar   pgtype.Text
+	Role     string
+	JoinedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetListGroupMembers(ctx context.Context, groupID pgtype.UUID) ([]GetListGroupMembersRow, error) {
+	rows, err := q.db.Query(ctx, getListGroupMembers, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetListGroupMembersRow
+	for rows.Next() {
+		var i GetListGroupMembersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Avatar,
+			&i.Role,
+			&i.JoinedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserByID = `-- name: GetUserByID :one
 SELECT id, email, status, created_at, avatar_url, has_email_notification, has_push_notification
 FROM users

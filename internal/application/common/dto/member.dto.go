@@ -11,7 +11,7 @@ type ListMembersRequest struct {
 
 type UpdateMemberRoleRequest struct {
 	GroupID string
-	UserID  string
+	MemberId  string
 	Role    enum.GroupRole
 }
 
@@ -29,4 +29,9 @@ type MemberResponse struct {
 	Role enum.GroupRole
 
 	JoinedAt time.Time
+}
+
+type ListMembersResponse struct {
+	Members []MemberResponse
+	Total   int
 }
