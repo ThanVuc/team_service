@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	errorbase "team_service/internal/domain/common/apperror"
 	errdict "team_service/internal/domain/common/apperror/err"
@@ -11,6 +12,7 @@ import (
 	"team_service/internal/infrastructure/share/utils"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -194,6 +196,213 @@ func (r *SprintRepository) DeleteDraftSprint(ctx context.Context, sprintID strin
 	}
 
 	return nil
+}
+
+func (r *SprintRepository) DeleteSprint(ctx context.Context, sprintID string) errorbase.AppError {
+	var sprintUUID pgtype.UUID
+	if err := sprintUUID.Scan(sprintID); err != nil {
+		return errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse sprint id"),
+		)
+	}
+
+	rowsAffected, err := r.q.DeleteSprint(ctx, sprintUUID)
+	if err != nil {
+		return errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to delete sprint id=%s", sprintID)),
+		)
+	}
+
+	if rowsAffected == 0 {
+		return errorbase.New(
+			errdict.ErrUnprocessable,
+			errorbase.WithDetail("sprint not found or not deletable (must be draft)"),
+		)
+	}
+
+	return nil
+}
+
+func (r *SprintRepository) GetSprintByID(
+	ctx context.Context,
+	sprintID string,
+) (*entity.Sprint, errorbase.AppError) {
+	var sprintUUID pgtype.UUID
+	if err := sprintUUID.Scan(sprintID); err != nil {
+		return nil, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse sprint id"),
+		)
+	}
+
+	dbSprint, err := r.q.GetSprintByID(ctx, sprintUUID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errorbase.New(
+				errdict.ErrNotFound,
+				errorbase.WithDetail(fmt.Sprintf("sprint not found id=%s", sprintID)),
+			)
+		}
+
+		return nil, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to get sprint id=%s", sprintID)),
+		)
+	}
+
+	var goal *string
+	if dbSprint.Goal.Valid {
+		goal = utils.Ptr(dbSprint.Goal.String)
+	}
+
+	return &entity.Sprint{
+		ID:               dbSprint.ID.String(),
+		GroupID:          dbSprint.GroupID.String(),
+		Name:             dbSprint.Name,
+		Goal:             goal,
+		Status:           enum.SprintStatus(dbSprint.Status),
+		StartDate:        dbSprint.StartDate.Time,
+		EndDate:          dbSprint.EndDate.Time,
+		CreatedAt:        dbSprint.CreatedAt.Time,
+		UpdatedAt:        dbSprint.UpdatedAt.Time,
+		VelocityWork:     utils.Ptr(int32(dbSprint.VelocityWork.Int32)),
+		VelocityEstimate: utils.Ptr(float64(dbSprint.VelocityEstimate.Float64)),
+		WorkDeleted:      utils.Ptr(int32(dbSprint.WorkDeleted.Int32)),
+	}, nil
+}
+
+func (r *SprintRepository) UpdateSprint(
+	ctx context.Context,
+	sprintID string,
+	name, goal *string,
+	startDate, endDate *time.Time,
+) (*entity.Sprint, errorbase.AppError) {
+	var sprintUUID pgtype.UUID
+	if err := sprintUUID.Scan(sprintID); err != nil {
+		return nil, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse sprint id"),
+		)
+	}
+
+	var dbName pgtype.Text
+	if name != nil {
+		dbName = pgtype.Text{String: *name, Valid: true}
+	}
+
+	var dbGoal pgtype.Text
+	if goal != nil {
+		dbGoal = pgtype.Text{String: *goal, Valid: true}
+	}
+
+	var dbStartDate pgtype.Date
+	if startDate != nil {
+		if err := dbStartDate.Scan(*startDate); err != nil {
+			return nil, errorbase.New(
+				errdict.ErrInternal,
+				errorbase.WithDetail("failed to parse start date"),
+			)
+		}
+	}
+
+	var dbEndDate pgtype.Date
+	if endDate != nil {
+		if err := dbEndDate.Scan(*endDate); err != nil {
+			return nil, errorbase.New(
+				errdict.ErrInternal,
+				errorbase.WithDetail("failed to parse end date"),
+			)
+		}
+	}
+
+	updatedSprint, err := r.q.UpdateSprint(ctx, database.UpdateSprintParams{
+		Name:      dbName,
+		Goal:      dbGoal,
+		StartDate: dbStartDate,
+		EndDate:   dbEndDate,
+		ID:        sprintUUID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errorbase.New(
+				errdict.ErrUnprocessable,
+				errorbase.WithDetail("sprint not found or not editable"),
+			)
+		}
+
+		return nil, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to update sprint id=%s", sprintID)),
+		)
+	}
+
+	return &entity.Sprint{
+		ID:               updatedSprint.ID.String(),
+		GroupID:          updatedSprint.GroupID.String(),
+		Name:             updatedSprint.Name,
+		Goal:             utils.Ptr(updatedSprint.Goal.String),
+		Status:           enum.SprintStatus(updatedSprint.Status),
+		StartDate:        updatedSprint.StartDate.Time,
+		EndDate:          updatedSprint.EndDate.Time,
+		CreatedAt:        updatedSprint.CreatedAt.Time,
+		UpdatedAt:        updatedSprint.UpdatedAt.Time,
+		VelocityWork:     utils.Ptr(int32(updatedSprint.VelocityWork.Int32)),
+		VelocityEstimate: utils.Ptr(float64(updatedSprint.VelocityEstimate.Float64)),
+		WorkDeleted:      utils.Ptr(int32(updatedSprint.WorkDeleted.Int32)),
+	}, nil
+}
+
+func (r *SprintRepository) UpdateSprintStatus(
+	ctx context.Context,
+	sprintID string,
+	status enum.SprintStatus,
+) (*entity.Sprint, errorbase.AppError) {
+	var sprintUUID pgtype.UUID
+	if err := sprintUUID.Scan(sprintID); err != nil {
+		return nil, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse sprint id"),
+		)
+	}
+
+	updatedSprint, err := r.q.UpdateSprintStatus(ctx, database.UpdateSprintStatusParams{
+		Status: status.String(),
+		ID:     sprintUUID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errorbase.New(
+				errdict.ErrNotFound,
+				errorbase.WithDetail(fmt.Sprintf("sprint not found id=%s", sprintID)),
+			)
+		}
+
+		return nil, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to update sprint status id=%s", sprintID)),
+		)
+	}
+
+	return &entity.Sprint{
+		ID:               updatedSprint.ID.String(),
+		GroupID:          updatedSprint.GroupID.String(),
+		Name:             updatedSprint.Name,
+		Goal:             utils.Ptr(updatedSprint.Goal.String),
+		Status:           enum.SprintStatus(updatedSprint.Status),
+		StartDate:        updatedSprint.StartDate.Time,
+		EndDate:          updatedSprint.EndDate.Time,
+		CreatedAt:        updatedSprint.CreatedAt.Time,
+		UpdatedAt:        updatedSprint.UpdatedAt.Time,
+		VelocityWork:     utils.Ptr(int32(updatedSprint.VelocityWork.Int32)),
+		VelocityEstimate: utils.Ptr(float64(updatedSprint.VelocityEstimate.Float64)),
+		WorkDeleted:      utils.Ptr(int32(updatedSprint.WorkDeleted.Int32)),
+	}, nil
 }
 
 func (r *SprintRepository) GetSprintsByGroupID(

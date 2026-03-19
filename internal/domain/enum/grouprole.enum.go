@@ -38,3 +38,7 @@ func (r GroupRole) Priority() int {
 func (r GroupRole) HasPermission(required GroupRole) bool {
 	return r.Priority() >= required.Priority()
 }
+
+func (r GroupRole) String() string {
+	return string(r)
+}
