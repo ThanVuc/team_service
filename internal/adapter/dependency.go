@@ -43,7 +43,10 @@ func (d *Dependency) Start(ctx context.Context) error {
 		d.infra.GetLogger(),
 	)
 
-	d.SprintController = grpccontroller.NewSprintController()
+	d.SprintController = grpccontroller.NewSprintController(
+		d.app.SprintUseCase,
+		d.infra.GetLogger(),
+	)
 	d.WorkController = grpccontroller.NewWorkController()
 
 	// ===================================

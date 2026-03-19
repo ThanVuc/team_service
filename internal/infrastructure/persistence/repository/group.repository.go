@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	appdto "team_service/internal/application/common/dto"
 	errorbase "team_service/internal/domain/common/apperror"
 	errdict "team_service/internal/domain/common/apperror/err"
 	"team_service/internal/domain/entity"
+	"team_service/internal/domain/enum"
 	"team_service/internal/infrastructure/persistence/db/database"
+	"team_service/internal/infrastructure/share/utils"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -201,4 +204,209 @@ func (r *GroupRepository) GetGroupByID(
 	}
 
 	return group, int32(memberCount), sprintName, nil
+}
+
+func (r *GroupRepository) GetRoleByUserIDAndGroupID(
+	ctx context.Context,
+	userID string,
+	groupID string,
+) (string, errorbase.AppError) {
+	var userUUID pgtype.UUID
+	if err := userUUID.Scan(userID); err != nil {
+		return "", errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse user id"),
+		)
+	}
+
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return "", errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	role, err := r.q.GetRoleByGroupIDAndUserID(ctx, database.GetRoleByGroupIDAndUserIDParams{
+		GroupID: groupUUID,
+		UserID:  userUUID,
+	})
+
+	if err != nil {
+		return "", errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to get role for user=%s in group=%s", userID, groupID)),
+		)
+	}
+
+	return role, nil
+}
+
+func (r *GroupRepository) CheckGroupExists(
+	ctx context.Context,
+	groupID string,
+) (bool, errorbase.AppError) {
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return false, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	exists, err := r.q.CheckGroupExists(ctx, groupUUID)
+	if err != nil {
+		return false, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to check if group exists id=%s", groupID)),
+		)
+	}
+
+	return exists, nil
+}
+
+func (r *GroupRepository) UpdateGroup(
+	ctx context.Context,
+	group *entity.Group,
+) (*entity.Group, errorbase.AppError) {
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(group.ID); err != nil {
+		return nil, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	var desc pgtype.Text
+	if group.Description != nil {
+		desc = pgtype.Text{
+			String: *group.Description,
+			Valid:  true,
+		}
+	}
+
+	var name pgtype.Text
+	name = pgtype.Text{
+		String: group.Name,
+		Valid:  true,
+	}
+
+	dbGroup, err := r.q.UpdateGroup(ctx, database.UpdateGroupParams{
+		ID:          groupUUID,
+		Name:        name,
+		Description: desc,
+	})
+
+	if err != nil {
+		return nil, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to update group id=%s", group.ID)),
+		)
+	}
+
+	return &entity.Group{
+		ID:          dbGroup.ID.String(),
+		Name:        dbGroup.Name,
+		Description: &dbGroup.Description.String,
+		OwnerID:     dbGroup.OwnerID.String(),
+		CreatedAt:   dbGroup.CreatedAt.Time,
+		UpdatedAt:   dbGroup.UpdatedAt.Time,
+	}, nil
+
+}
+
+func (r *GroupRepository) DeleteGroup(
+	ctx context.Context,
+	groupID string,
+) errorbase.AppError {
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	err := r.q.DeleteGroup(ctx, groupUUID)
+	if err != nil {
+		return errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to delete group id=%s", groupID)),
+		)
+	}
+
+	return nil
+}
+
+func (r *GroupRepository) CountManagerAndMemberByGroupID(
+	ctx context.Context,
+	groupID string,
+) (int64, errorbase.AppError) {
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return 0, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	count, err := r.q.CountManagerAndMemberByGroupID(ctx, groupUUID)
+	if err != nil {
+		return 0, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to count manager and member for group=%s", groupID)),
+		)
+	}
+
+	return count, nil
+}
+
+func (r *GroupRepository) UpdateMemberRole(
+	ctx context.Context,
+	userID string,
+	groupID string,
+	newRole string,
+) (*appdto.MemberResponse, errorbase.AppError) {
+	var userUUID pgtype.UUID
+	if err := userUUID.Scan(userID); err != nil {
+		return nil, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse user id"),
+		)
+	}
+
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return nil, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	member, err := r.q.UpdateRoleMember(ctx, database.UpdateRoleMemberParams{
+		UserID:  userUUID,
+		GroupID: groupUUID,
+		Role:    newRole,
+	})
+
+	if err != nil {
+		return nil, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to update member role user=%s in group=%s", userID, groupID)),
+		)
+	}
+
+	return &appdto.MemberResponse{
+		ID:       member.ID.String(),
+		Email:    member.Email,
+		Avatar:   utils.Ptr(member.AvatarUrl.String),
+		Role:     enum.GroupRole(member.Role),
+		JoinedAt: member.JoinedAt.Time,
+	}, nil
 }

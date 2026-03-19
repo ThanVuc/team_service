@@ -17,7 +17,20 @@ type (
 	GroupUseCase interface {
 		CreateGroup(ctx context.Context, req *appdto.CreateGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError)
 		Ping(ctx context.Context, req *common.EmptyRequest) (*common.EmptyResponse, errorbase.AppError)
-		// GetGroup(ctx context.Context, req *common.IDRequest) (*team_service.GetGroupResponse, errorbase.AppError)
+		GetGroupRequest(ctx context.Context, req *appdto.GetGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError)
+		UpdateGroup(ctx context.Context, req *appdto.UpdateGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError)
+		DeleteGroup(ctx context.Context, req *appdto.DeleteGroupRequest) (*appdto.BaseResponse[appdto.DeleteGroupResponse], errorbase.AppError)
+		GetListGroupMembers(ctx context.Context, req *appdto.ListMembersRequest) (*appdto.BaseResponse[appdto.ListMembersResponse], errorbase.AppError)
+		UpdateMemberRole(ctx context.Context, req *appdto.UpdateMemberRoleRequest) (*appdto.BaseResponse[appdto.MemberResponse], errorbase.AppError)
+	}
+
+	SprintUseCase interface {
+		CreateSprint(ctx context.Context, req *appdto.CreateSprintRequest) (*appdto.BaseResponse[appdto.SprintResponse], errorbase.AppError)
+		GetSprint(ctx context.Context, req *appdto.GetSprintRequest) (*appdto.BaseResponse[appdto.SprintResponse], errorbase.AppError)
+		ListSprints(ctx context.Context, req *appdto.ListSprintsRequest) (*appdto.BaseResponse[appdto.ListSprintsResponse], errorbase.AppError)
+		UpdateSprint(ctx context.Context, req *appdto.UpdateSprintRequest) (*appdto.BaseResponse[appdto.SprintResponse], errorbase.AppError)
+		UpdateSprintStatus(ctx context.Context, req *appdto.UpdateSprintStatusRequest) (*appdto.BaseResponse[appdto.UpdateSprintStatusResponse], errorbase.AppError)
+		DeleteSprint(ctx context.Context, req *appdto.DeleteSprintRequest) (*appdto.BaseResponse[appdto.DeleteSprintResponse], errorbase.AppError)
 	}
 
 	UserUseCase interface {
@@ -31,8 +44,21 @@ func NewGroupUseCase(
 	authHelper *apphelper.AuthHelper,
 ) GroupUseCase {
 	return &groupUseCase{
+		store:     store,
+		groupRepo: store.GroupRepository(),
+		userRepo:  store.UserRepository(),
+		validator: validator,
+	}
+}
+
+func NewSprintUseCase(
+	store istore.Store,
+	validator *appvalidation.SprintValidator,
+	authHelper *apphelper.AuthHelper,
+) SprintUseCase {
+	return &sprintUseCase{
 		store:      store,
-		groupRepo:  store.GroupRepository(),
+		sprintRepo: store.SprintRepository(),
 		validator:  validator,
 		authHelper: authHelper,
 	}

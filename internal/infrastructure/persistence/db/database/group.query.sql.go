@@ -11,6 +11,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const checkGroupExists = `-- name: CheckGroupExists :one
+SELECT EXISTS (
+    SELECT 1
+    FROM groups
+    WHERE id = $1 AND deleted_at IS NULL
+)
+`
+
+func (q *Queries) CheckGroupExists(ctx context.Context, id pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, checkGroupExists, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const countGroupMembersByGroupID = `-- name: CountGroupMembersByGroupID :one
 SELECT COUNT(*)
 FROM group_members
@@ -32,6 +47,19 @@ WHERE owner_id = $1
 
 func (q *Queries) CountGroupsByOwner(ctx context.Context, ownerID pgtype.UUID) (int64, error) {
 	row := q.db.QueryRow(ctx, countGroupsByOwner, ownerID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countManagerAndMemberByGroupID = `-- name: CountManagerAndMemberByGroupID :one
+SELECT COUNT(*)
+FROM group_members
+WHERE group_id = $1 AND role IN ('manager', 'member')
+`
+
+func (q *Queries) CountManagerAndMemberByGroupID(ctx context.Context, groupID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countManagerAndMemberByGroupID, groupID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -118,6 +146,17 @@ func (q *Queries) CreateGroupMember(ctx context.Context, arg CreateGroupMemberPa
 	return err
 }
 
+const deleteGroup = `-- name: DeleteGroup :exec
+UPDATE groups 
+SET deleted_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) DeleteGroup(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteGroup, id)
+	return err
+}
+
 const getGroupByID = `-- name: GetGroupByID :one
 SELECT id, name, description, owner_id, created_at, updated_at, deleted_at, avatar_url
 FROM groups
@@ -196,4 +235,78 @@ func (q *Queries) Ping(ctx context.Context) (int32, error) {
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const updateGroup = `-- name: UpdateGroup :one
+UPDATE groups
+SET
+  name = COALESCE($1, name),
+  description = COALESCE($2, description),
+  updated_at = NOW()
+WHERE id = $3 AND deleted_at IS NULL
+RETURNING id, name, description, owner_id, created_at, updated_at, deleted_at, avatar_url
+`
+
+type UpdateGroupParams struct {
+	Name        pgtype.Text
+	Description pgtype.Text
+	ID          pgtype.UUID
+}
+
+func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Group, error) {
+	row := q.db.QueryRow(ctx, updateGroup, arg.Name, arg.Description, arg.ID)
+	var i Group
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.OwnerID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.AvatarUrl,
+	)
+	return i, err
+}
+
+const updateRoleMember = `-- name: UpdateRoleMember :one
+UPDATE group_members gm
+SET role = $1
+FROM users u
+WHERE gm.group_id = $2
+AND gm.user_id = $3
+AND gm.user_id = u.id
+RETURNING 
+    u.id,
+    u.email,
+    u.avatar_url,
+    gm.role,
+    gm.joined_at
+`
+
+type UpdateRoleMemberParams struct {
+	Role    string
+	GroupID pgtype.UUID
+	UserID  pgtype.UUID
+}
+
+type UpdateRoleMemberRow struct {
+	ID        pgtype.UUID
+	Email     string
+	AvatarUrl pgtype.Text
+	Role      string
+	JoinedAt  pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateRoleMember(ctx context.Context, arg UpdateRoleMemberParams) (UpdateRoleMemberRow, error) {
+	row := q.db.QueryRow(ctx, updateRoleMember, arg.Role, arg.GroupID, arg.UserID)
+	var i UpdateRoleMemberRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.AvatarUrl,
+		&i.Role,
+		&i.JoinedAt,
+	)
+	return i, err
 }

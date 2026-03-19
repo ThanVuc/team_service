@@ -145,3 +145,45 @@ func (r *UserRepository) UpsertUser(
 
 	return nil
 }
+
+func (r *UserRepository) GetListMembersByGroupID(ctx context.Context, groupID string) (*appdto.ListMembersResponse, errorbase.AppError) {
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return nil, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	members, err := r.q.GetListGroupMembers(ctx, groupUUID)
+	if err != nil {
+		return nil, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to get list members by group id in repository"),
+		)
+	}
+
+	if len(members) == 0 {
+		return &appdto.ListMembersResponse{
+			Members: []appdto.MemberResponse{},
+			Total:   0,
+		}, nil
+	}
+
+	memberVals := make([]appdto.MemberResponse, len(members))
+	for i, member := range members {
+		memberVals[i] = appdto.MemberResponse{
+			ID:       member.ID.String(),
+			Email:    member.Email,
+			Role:     enum.GroupRole(member.Role),
+			Avatar:   utils.Ptr(member.Avatar.String),
+			JoinedAt: member.JoinedAt.Time,
+		}
+	}
+
+	return &appdto.ListMembersResponse{
+		Members: memberVals,
+		Total:   int(len(memberVals)),
+	}, nil
+}

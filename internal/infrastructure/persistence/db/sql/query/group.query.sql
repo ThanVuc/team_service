@@ -67,3 +67,47 @@ FROM sprints
 WHERE group_id = $1
 ORDER BY created_at DESC
 LIMIT 1; 
+
+
+-- name: UpdateGroup :one
+UPDATE groups
+SET
+  name = COALESCE(sqlc.narg('name'), name),
+  description = COALESCE(sqlc.narg('description'), description),
+  updated_at = NOW()
+WHERE id = sqlc.arg('id') AND deleted_at IS NULL
+RETURNING *;
+
+-- name: CheckGroupExists :one
+SELECT EXISTS (
+    SELECT 1
+    FROM groups
+    WHERE id = $1 AND deleted_at IS NULL
+);
+
+
+-- name: DeleteGroup :exec 
+UPDATE groups 
+SET deleted_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: CountManagerAndMemberByGroupID :one
+SELECT COUNT(*)
+FROM group_members
+WHERE group_id = $1 AND role IN ('manager', 'member');
+
+
+-- name: UpdateRoleMember :one
+UPDATE group_members gm
+SET role = $1
+FROM users u
+WHERE gm.group_id = $2
+AND gm.user_id = $3
+AND gm.user_id = u.id
+RETURNING 
+    u.id,
+    u.email,
+    u.avatar_url,
+    gm.role,
+    gm.joined_at;
+

@@ -14,6 +14,14 @@ type CreateSprintRequest struct {
 	EndDate   time.Time
 }
 
+type GetSprintRequest struct {
+	SprintID string
+}
+
+type ListSprintsRequest struct {
+	GroupID string
+}
+
 type UpdateSprintRequest struct {
 	SprintID string
 
@@ -33,6 +41,20 @@ type DeleteSprintRequest struct {
 	SprintID string
 }
 
+type ListSprintsResponse struct {
+	Sprints []SprintResponse
+	Total   int32
+}
+
+type UpdateSprintStatusResponse struct {
+	SprintID string
+	Status   enum.SprintStatus
+}
+
+type DeleteSprintResponse struct {
+	Success bool
+}
+
 type SprintResponse struct {
 	ID      string
 	GroupID string
@@ -45,9 +67,9 @@ type SprintResponse struct {
 	StartDate time.Time
 	EndDate   time.Time
 
-	VelocityWork     int
-	VelocityEstimate float64
-	WorkDeleted      int
+	TotalWork       int32
+	CompletedWork   int32
+	ProgressPercent float32
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

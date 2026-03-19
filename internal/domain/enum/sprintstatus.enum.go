@@ -19,3 +19,7 @@ func (s SprintStatus) IsValid() bool {
 	}
 	return false
 }
+
+func (s SprintStatus) String() string {
+	return string(s)
+}
