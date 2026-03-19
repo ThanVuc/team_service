@@ -111,3 +111,17 @@ RETURNING
     gm.role,
     gm.joined_at;
 
+-- name: RemoveMember :exec
+DELETE FROM group_members
+WHERE group_id = $1
+AND user_id = $2;
+
+-- name: CheckMemberExistsByEmail :one
+SELECT EXISTS (
+    SELECT 1
+    FROM group_members gm
+    JOIN users u ON gm.user_id = u.id
+    WHERE gm.group_id = $1
+    AND u.email = $2
+);
+

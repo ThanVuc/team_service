@@ -34,6 +34,21 @@ func MapGroupRole(role enum.GroupRole) team_service.GroupRole {
 	}
 }
 
+func MapProtoGroupRole(role team_service.GroupRole) enum.GroupRole {
+	switch role {
+	case team_service.GroupRole_GROUP_ROLE_OWNER:
+		return enum.GroupRoleOwner
+	case team_service.GroupRole_GROUP_ROLE_MANAGER:
+		return enum.GroupRoleManager
+	case team_service.GroupRole_GROUP_ROLE_MEMBER:
+		return enum.GroupRoleMember
+	case team_service.GroupRole_GROUP_ROLE_VIEWER:
+		return enum.GroupRoleViewer
+	default:
+		return ""
+	}
+}
+
 func MapSprintStatus(status enum.SprintStatus) team_service.SprintStatus {
 	switch status {
 	case enum.SprintStatusDraft:

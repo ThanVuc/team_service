@@ -22,6 +22,8 @@ type (
 		DeleteGroup(ctx context.Context, req *appdto.DeleteGroupRequest) (*appdto.BaseResponse[appdto.DeleteGroupResponse], errorbase.AppError)
 		GetListGroupMembers(ctx context.Context, req *appdto.ListMembersRequest) (*appdto.BaseResponse[appdto.ListMembersResponse], errorbase.AppError)
 		UpdateMemberRole(ctx context.Context, req *appdto.UpdateMemberRoleRequest) (*appdto.BaseResponse[appdto.MemberResponse], errorbase.AppError)
+		RemoveMember(ctx context.Context, req *appdto.RemoveMemberRequest) (*appdto.BaseResponse[appdto.RemoveMemberResponse], errorbase.AppError)
+		CreateInvite(ctx context.Context, req *appdto.CreateInviteRequest) (*appdto.BaseResponse[appdto.InviteResponse], errorbase.AppError)
 	}
 
 	SprintUseCase interface {
