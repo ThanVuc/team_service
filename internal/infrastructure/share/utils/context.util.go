@@ -40,3 +40,14 @@ func GetRequestID(d rabbitmq.Delivery) string {
 	}
 	return ""
 }
+
+func GetGroupIDFromContext(ctx context.Context) string {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		vals := md.Get("x-group-id")
+		if len(vals) > 0 {
+			return vals[0]
+		}
+	}
+	return ""
+}

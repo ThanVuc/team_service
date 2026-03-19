@@ -122,6 +122,56 @@ func (q *Queries) DeleteDraftSprintsByGroupID(ctx context.Context, id pgtype.UUI
 	return err
 }
 
+const deleteSprint = `-- name: DeleteSprint :execrows
+WITH target_sprint AS (
+    SELECT sprints.id
+    FROM sprints
+    WHERE sprints.id = $1
+      AND sprints.status = 'draft'
+), moved_works AS (
+    UPDATE works
+    SET sprint_id = NULL,
+        updated_at = NOW()
+    WHERE works.sprint_id IN (SELECT target_sprint.id FROM target_sprint)
+)
+DELETE FROM sprints
+WHERE sprints.id IN (SELECT target_sprint.id FROM target_sprint)
+`
+
+func (q *Queries) DeleteSprint(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSprint, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const getSprintByID = `-- name: GetSprintByID :one
+SELECT id, group_id, name, goal, start_date, end_date, status, velocity_work, velocity_estimate, work_deleted, created_at, updated_at
+FROM sprints
+WHERE id = $1
+`
+
+func (q *Queries) GetSprintByID(ctx context.Context, id pgtype.UUID) (Sprint, error) {
+	row := q.db.QueryRow(ctx, getSprintByID, id)
+	var i Sprint
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.Name,
+		&i.Goal,
+		&i.StartDate,
+		&i.EndDate,
+		&i.Status,
+		&i.VelocityWork,
+		&i.VelocityEstimate,
+		&i.WorkDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getSprintsByGroupID = `-- name: GetSprintsByGroupID :many
 SELECT id, group_id, name, goal, start_date, end_date, status, velocity_work, velocity_estimate, work_deleted, created_at, updated_at
 FROM sprints
@@ -186,4 +236,84 @@ func (q *Queries) IsSprintOverlap(ctx context.Context, arg IsSprintOverlapParams
 	var is_overlap bool
 	err := row.Scan(&is_overlap)
 	return is_overlap, err
+}
+
+const updateSprint = `-- name: UpdateSprint :one
+UPDATE sprints
+SET
+        name = COALESCE($1, name),
+        goal = COALESCE($2, goal),
+        start_date = COALESCE($3, start_date),
+        end_date = COALESCE($4, end_date),
+        updated_at = NOW()
+WHERE id = $5
+RETURNING id, group_id, name, goal, start_date, end_date, status, velocity_work, velocity_estimate, work_deleted, created_at, updated_at
+`
+
+type UpdateSprintParams struct {
+	Name      pgtype.Text
+	Goal      pgtype.Text
+	StartDate pgtype.Date
+	EndDate   pgtype.Date
+	ID        pgtype.UUID
+}
+
+func (q *Queries) UpdateSprint(ctx context.Context, arg UpdateSprintParams) (Sprint, error) {
+	row := q.db.QueryRow(ctx, updateSprint,
+		arg.Name,
+		arg.Goal,
+		arg.StartDate,
+		arg.EndDate,
+		arg.ID,
+	)
+	var i Sprint
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.Name,
+		&i.Goal,
+		&i.StartDate,
+		&i.EndDate,
+		&i.Status,
+		&i.VelocityWork,
+		&i.VelocityEstimate,
+		&i.WorkDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateSprintStatus = `-- name: UpdateSprintStatus :one
+UPDATE sprints
+SET
+        status = $1,
+        updated_at = NOW()
+WHERE id = $2
+RETURNING id, group_id, name, goal, start_date, end_date, status, velocity_work, velocity_estimate, work_deleted, created_at, updated_at
+`
+
+type UpdateSprintStatusParams struct {
+	Status string
+	ID     pgtype.UUID
+}
+
+func (q *Queries) UpdateSprintStatus(ctx context.Context, arg UpdateSprintStatusParams) (Sprint, error) {
+	row := q.db.QueryRow(ctx, updateSprintStatus, arg.Status, arg.ID)
+	var i Sprint
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.Name,
+		&i.Goal,
+		&i.StartDate,
+		&i.EndDate,
+		&i.Status,
+		&i.VelocityWork,
+		&i.VelocityEstimate,
+		&i.WorkDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

@@ -71,3 +71,42 @@ RETURNING
     work_deleted,
     created_at,
     updated_at;
+
+-- name: GetSprintByID :one
+SELECT *
+FROM sprints
+WHERE id = $1;
+
+-- name: UpdateSprint :one
+UPDATE sprints
+SET
+        name = COALESCE(sqlc.narg('name'), name),
+        goal = COALESCE(sqlc.narg('goal'), goal),
+        start_date = COALESCE(sqlc.narg('start_date'), start_date),
+        end_date = COALESCE(sqlc.narg('end_date'), end_date),
+        updated_at = NOW()
+WHERE id = sqlc.arg('id')
+RETURNING *;
+
+-- name: UpdateSprintStatus :one
+UPDATE sprints
+SET
+        status = sqlc.arg('status'),
+        updated_at = NOW()
+WHERE id = sqlc.arg('id')
+RETURNING *;
+
+-- name: DeleteSprint :execrows
+WITH target_sprint AS (
+    SELECT sprints.id
+    FROM sprints
+    WHERE sprints.id = $1
+      AND sprints.status = 'draft'
+), moved_works AS (
+    UPDATE works
+    SET sprint_id = NULL,
+        updated_at = NOW()
+    WHERE works.sprint_id IN (SELECT target_sprint.id FROM target_sprint)
+)
+DELETE FROM sprints
+WHERE sprints.id IN (SELECT target_sprint.id FROM target_sprint);

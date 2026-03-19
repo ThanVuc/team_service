@@ -33,11 +33,20 @@ func NewAuthHelper(
 	}
 }
 
-func (h *AuthHelper) RequireRole(ctx context.Context, groupId string, expectedRole enum.GroupRole) (*appdto.UserWithPermission, errorbase.AppError) {
+func (h *AuthHelper) RequireRole(ctx context.Context, expectedRole enum.GroupRole) (*appdto.UserWithPermission, errorbase.AppError) {
 	userID := utils.GetUserIDFromOutgoingContext(ctx)
-	prefix := appconstant.CacheUserWithRolePrefix + userID
+	groupId := utils.GetGroupIDFromContext(ctx)
+	key := appconstant.CacheUserWithRolePrefix + userID
 
-	if err := h.cacheRepo.Get(ctx, prefix, &expectedRole); err == nil {
+	if userID == "" {
+		return nil, errorbase.New(errdict.ErrUnauthorized, errorbase.WithDetail("user id is required in context"))
+	}
+
+	if groupId == "" {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required in context"))
+	}
+
+	if err := h.cacheRepo.Get(ctx, key, &expectedRole); err == nil {
 		if !expectedRole.HasPermission(expectedRole) {
 			return nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("User does not have permission!"))
 		}
@@ -53,7 +62,7 @@ func (h *AuthHelper) RequireRole(ctx context.Context, groupId string, expectedRo
 		return nil, err
 	}
 
-	if cacheErr := h.cacheRepo.Set(ctx, prefix, user.Role, 800); cacheErr != nil {
+	if cacheErr := h.cacheRepo.Set(ctx, key, user.Role.String(), 800); cacheErr != nil {
 		h.logger.Error(fmt.Sprintf("Failed to set user role in cache for user %s: %v", userID, cacheErr))
 	}
 
