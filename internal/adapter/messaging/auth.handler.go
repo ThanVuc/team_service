@@ -4,6 +4,7 @@ import (
 	"context"
 	adaptermessagingconst "team_service/internal/adapter/constant/messaging"
 	"team_service/internal/application/usecase"
+	"team_service/internal/infrastructure/share/utils"
 
 	"github.com/thanvuc/go-core-lib/eventbus"
 	"github.com/thanvuc/go-core-lib/log"
@@ -37,8 +38,10 @@ func NewAuthHandler(
 }
 
 func (h *AuthHandler) Handle(ctx context.Context) error {
-	return h.consumer.Consume(
-		ctx,
-		h.userUseCase.SyncUserData(ctx),
-	)
+	return utils.WithSafeMQPanic(h.logger, func() error {
+		return h.consumer.Consume(
+			ctx,
+			h.userUseCase.SyncUserData(ctx),
+		)
+	})
 }
