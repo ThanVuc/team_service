@@ -245,3 +245,144 @@ func (v *GroupValidator) ValidateUpdateMemberRole(ctx context.Context, req *appd
 	return nil
 
 }
+
+func (v *GroupValidator) ValidateRemoveMember(ctx context.Context, req *appdto.RemoveMemberRequest) errorbase.AppError {
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
+	if userID == "" {
+		return errorbase.New(errdict.ErrUnauthorized, errorbase.WithDetail("missing user context"))
+	}
+
+	if req.GroupID == "" {
+		return errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required"))
+	}
+
+	checkGroupExist, err := v.groupRepo.CheckGroupExists(ctx, req.GroupID)
+	if err != nil {
+		return err
+	}
+
+	if !checkGroupExist {
+		return errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("group is not found"))
+	}
+
+	myRole, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, userID, req.GroupID)
+	if err != nil {
+		return err
+	}
+
+	if myRole == "" {
+		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user is not a member of the group"))
+	}
+
+	if myRole != string(enum.GroupRoleOwner) && myRole != string(enum.GroupRoleManager) {
+		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user does not have permission to remove member"))
+	}
+
+	memberRole, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, req.MemberId, req.GroupID)
+
+	if err != nil {
+		return err
+	}
+
+	if memberRole == "" {
+		return errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("member is not found in the group"))
+	}
+
+	if memberRole == string(enum.GroupRoleOwner) {
+		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("cannot remove owner"))
+	}
+
+	if userID == req.MemberId {
+		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("cannot remove self"))
+	}
+
+	if myRole == string(enum.GroupRoleManager) && memberRole == string(enum.GroupRoleOwner) {
+		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("manager cannot remove owner"))
+	}
+	return nil
+}
+
+func (v *GroupValidator) ValidateCreateInvitation(ctx context.Context, req *appdto.CreateInviteRequest) (*entity.Invite, errorbase.AppError) {
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
+	if userID == "" {
+		return nil, errorbase.New(errdict.ErrUnauthorized, errorbase.WithDetail("missing user context"))
+	}
+
+	if req.GroupID == "" {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required"))
+	}
+
+	checkGroupExist, err := v.groupRepo.CheckGroupExists(ctx, req.GroupID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !checkGroupExist {
+		return nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("group is not found"))
+	}
+
+	countMember, err := v.groupRepo.CountManagerAndMemberByGroupID(ctx, req.GroupID)
+	if err != nil {
+		return nil, err
+	}
+
+	if countMember >= 9 {
+		return nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("group has reached the maximum number of members"))
+	}
+
+	if req.Email != nil {
+		exist, err := v.groupRepo.CheckMemberExistsByEmail(ctx, req.GroupID, *req.Email)
+		if err != nil {
+			return nil, err
+		}
+
+		if exist {
+			return nil, errorbase.New(
+				errdict.ErrForbidden,
+				errorbase.WithDetail("user with the email is already a member of the group"),
+			)
+		}
+	}
+
+	myRole, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, userID, req.GroupID)
+	if err != nil {
+		return nil, err
+	}
+
+	if myRole == "" {
+		return nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user is not a member of the group"))
+	}
+
+	if myRole != string(enum.GroupRoleOwner) && myRole != string(enum.GroupRoleManager) {
+		return nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user does not have permission to create invitation"))
+	}
+
+	if myRole == string(enum.GroupRoleManager) {
+		if req.Role == enum.GroupRoleOwner || req.Role == enum.GroupRoleManager {
+			return nil, errorbase.New(
+				errdict.ErrForbidden,
+				errorbase.WithDetail("manager cannot assign owner or manager role"),
+			)
+		}
+	}
+
+	if req.Role == enum.GroupRoleOwner {
+		return nil, errorbase.New(
+			errdict.ErrForbidden,
+			errorbase.WithDetail("cannot assign owner role"),
+		)
+	}
+
+	newInvite, err := entity.NewInvite(
+		uuid.NewString(),
+		req.GroupID,
+		uuid.NewString(),
+		req.Role,
+		req.Email,
+		time.Now().Add(7*24*time.Hour),
+		userID,
+		time.Now(),
+	)
+
+	return newInvite, err
+}

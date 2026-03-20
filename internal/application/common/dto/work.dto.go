@@ -6,23 +6,17 @@ import (
 )
 
 type CreateWorkRequest struct {
-	GroupID string
-
-	SprintID *string
-
+	SprintID    *string
 	Name        string
 	Description *string
+}
 
-	Status enum.WorkStatus
+type GetWorkRequest struct {
+	WorkID string
+}
 
-	Priority enum.WorkPriority
-
-	AssigneeID *string
-
-	EstimateHours *float64
-	StoryPoint    *int
-
-	DueDate *time.Time
+type ListWorksRequest struct {
+	SprintID *string
 }
 
 type UpdateWorkRequest struct {
@@ -37,18 +31,36 @@ type UpdateWorkRequest struct {
 
 	AssigneeID *string
 
-	EstimateHours *float64
-	StoryPoint    *int
+	StoryPoint *int32
 
 	Priority *enum.WorkPriority
 
 	DueDate *time.Time
 
-	Version int
+	Version int32
 }
 
 type DeleteWorkRequest struct {
 	WorkID string
+}
+
+type DeleteWorkResponse struct {
+	Success bool
+}
+
+type ListWorksResponse struct {
+	Works []WorkResponse
+}
+
+type SimpleSprintDTO struct {
+	ID   string
+	Name string
+}
+
+type SimpleUserDTO struct {
+	ID     string
+	Email  string
+	Avatar *string
 }
 
 type WorkResponse struct {
@@ -62,15 +74,21 @@ type WorkResponse struct {
 	Status enum.WorkStatus
 
 	Priority enum.WorkPriority
+	Sprint   *SimpleSprintDTO
+	Assignee *SimpleUserDTO
 
 	AssigneeID *string
 	CreatorID  string
 
 	EstimateHours *float64
-	StoryPoint    *int
+	StoryPoint    *int32
 
 	DueDate *time.Time
 
+	CheckList *ChecklistSummaryResponse
+	Comments  *CommentListResponse
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	Version   int32
 }

@@ -2,7 +2,6 @@ package adapermapper
 
 import (
 	appdto "team_service/internal/application/common/dto"
-	"team_service/internal/domain/enum"
 	"team_service/proto/common"
 	"team_service/proto/team_service"
 
@@ -168,7 +167,6 @@ func ToListMembersGrpcResponse(
 
 	return &team_service.ListMembersResponse{
 		Members: members,
-		Total:   int32(resp.Data.Total),
 		Error:   ToProtoError(resp.Error),
 	}
 
@@ -178,7 +176,7 @@ func ToUpdateMemberRoleRequest(req *team_service.UpdateMemberRoleRequest) *appdt
 	return &appdto.UpdateMemberRoleRequest{
 		GroupID:  req.GroupId,
 		MemberId: req.MemberId,
-		Role:     enum.GroupRole(req.NewRole),
+		Role:     MapProtoGroupRole(req.NewRole),
 	}
 }
 
@@ -205,5 +203,28 @@ func ToUpdateMemberRoleGrpcResponse(
 			JoinedAt: timestamppb.New(resp.Data.JoinedAt),
 		},
 		Error: ToProtoError(resp.Error),
+	}
+}
+
+func ToRemoveMemberRequest(req *team_service.RemoveMemberRequest) *appdto.RemoveMemberRequest {
+	return &appdto.RemoveMemberRequest{
+		GroupID:  req.GroupId,
+		MemberId: req.MemberId,
+	}
+}
+
+func ToRemoveMemberGrpcResponse(
+	resp *appdto.BaseResponse[appdto.RemoveMemberResponse],
+) *team_service.RemoveMemberResponse {
+	if resp == nil || resp.Data == nil {
+		return &team_service.RemoveMemberResponse{
+			Success: false,
+			Error:   ToProtoError(resp.Error),
+		}
+	}
+
+	return &team_service.RemoveMemberResponse{
+		Success: resp.Data.Success,
+		Error:   ToProtoError(resp.Error),
 	}
 }

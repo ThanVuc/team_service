@@ -410,3 +410,69 @@ func (r *GroupRepository) UpdateMemberRole(
 		JoinedAt: member.JoinedAt.Time,
 	}, nil
 }
+
+func (r *GroupRepository) RemoveMember(
+	ctx context.Context,
+	groupID string,
+	userID string,
+) errorbase.AppError {
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	var userUUID pgtype.UUID
+	if err := userUUID.Scan(userID); err != nil {
+		return errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse user id"),
+		)
+	}
+
+	err := r.q.RemoveMember(ctx, database.RemoveMemberParams{
+		GroupID: groupUUID,
+		UserID:  userUUID,
+	})
+
+	if err != nil {
+		return errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to remove member user=%s from group=%s", userID, groupID)),
+		)
+	}
+
+	return nil
+}
+
+func (r *GroupRepository) CheckMemberExistsByEmail(
+	ctx context.Context,
+	groupID string,
+	email string,
+) (bool, errorbase.AppError) {
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return false, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	exists, err := r.q.CheckMemberExistsByEmail(ctx, database.CheckMemberExistsByEmailParams{
+		GroupID: groupUUID,
+		Email:   email,
+	})
+
+	if err != nil {
+		return false, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to check if member with email=%s exists in group=%s", email, groupID)),
+		)
+	}
+
+	return exists, nil
+}

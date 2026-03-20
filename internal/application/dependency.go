@@ -15,6 +15,7 @@ type Dependency struct {
 	// use cases
 	GroupUseCase  usecase.GroupUseCase
 	SprintUseCase usecase.SprintUseCase
+	WorkUseCase   usecase.WorkUseCase
 	UserUseCase   usecase.UserUseCase
 }
 
@@ -43,6 +44,13 @@ func (d *Dependency) InitUseCases(ctx context.Context) error {
 		store.GroupRepository(),
 	)
 
+	workValidator := appvalidation.NewWorkValidator(
+		store.WorkRepository(),
+		store.SprintRepository(),
+		store.GroupRepository(),
+		store.UserRepository(),
+	)
+
 	// ============ helper ============
 	authHelper := apphelper.NewAuthHelper(
 		store.UserRepository(),
@@ -60,6 +68,11 @@ func (d *Dependency) InitUseCases(ctx context.Context) error {
 	d.SprintUseCase = usecase.NewSprintUseCase(
 		store,
 		sprintValidator,
+		authHelper,
+	)
+	d.WorkUseCase = usecase.NewWorkUseCase(
+		store,
+		workValidator,
 		authHelper,
 	)
 

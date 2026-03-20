@@ -29,7 +29,7 @@ func (s *Store) ExecTx(
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return errorbase.Wrap(err, errdict.ErrInternal)
+		return errorbase.Wrap(err, errdict.ErrInternal, errorbase.WithDetail("failed to begin transaction"))
 	}
 
 	defer func() {
@@ -46,7 +46,7 @@ func (s *Store) ExecTx(
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return errorbase.Wrap(err, errdict.ErrInternal)
+		return errorbase.Wrap(err, errdict.ErrInternal, errorbase.WithDetail("failed to commit transaction"))
 	}
 
 	return nil
@@ -66,4 +66,8 @@ func (s *Store) WorkRepository() irepository.WorkRepository {
 
 func (s *Store) UserRepository() irepository.UserRepository {
 	return s.repocontainer.UserRepository()
+}
+
+func (s *Store) InviteRepository() irepository.InviteRepository {
+	return s.repocontainer.InviteRepository()
 }

@@ -34,6 +34,21 @@ func MapGroupRole(role enum.GroupRole) team_service.GroupRole {
 	}
 }
 
+func MapProtoGroupRole(role team_service.GroupRole) enum.GroupRole {
+	switch role {
+	case team_service.GroupRole_GROUP_ROLE_OWNER:
+		return enum.GroupRoleOwner
+	case team_service.GroupRole_GROUP_ROLE_MANAGER:
+		return enum.GroupRoleManager
+	case team_service.GroupRole_GROUP_ROLE_MEMBER:
+		return enum.GroupRoleMember
+	case team_service.GroupRole_GROUP_ROLE_VIEWER:
+		return enum.GroupRoleViewer
+	default:
+		return ""
+	}
+}
+
 func MapSprintStatus(status enum.SprintStatus) team_service.SprintStatus {
 	switch status {
 	case enum.SprintStatusDraft:
@@ -59,6 +74,62 @@ func MapProtoSprintStatus(status team_service.SprintStatus) enum.SprintStatus {
 		return enum.SprintStatusCompleted
 	case team_service.SprintStatus_SPRINT_STATUS_CANCELLED:
 		return enum.SprintStatusCancelled
+	default:
+		return ""
+	}
+}
+
+func MapWorkStatus(status enum.WorkStatus) team_service.WorkStatus {
+	switch status {
+	case enum.WorkStatusTodo:
+		return team_service.WorkStatus_WORK_STATUS_TODO
+	case enum.WorkStatusInProgress:
+		return team_service.WorkStatus_WORK_STATUS_IN_PROGRESS
+	case enum.WorkStatusInReview:
+		return team_service.WorkStatus_WORK_STATUS_IN_REVIEW
+	case enum.WorkStatusDone:
+		return team_service.WorkStatus_WORK_STATUS_DONE
+	default:
+		return team_service.WorkStatus_WORK_STATUS_UNSPECIFIED
+	}
+}
+
+func MapProtoWorkStatus(status team_service.WorkStatus) enum.WorkStatus {
+	switch status {
+	case team_service.WorkStatus_WORK_STATUS_TODO:
+		return enum.WorkStatusTodo
+	case team_service.WorkStatus_WORK_STATUS_IN_PROGRESS:
+		return enum.WorkStatusInProgress
+	case team_service.WorkStatus_WORK_STATUS_IN_REVIEW:
+		return enum.WorkStatusInReview
+	case team_service.WorkStatus_WORK_STATUS_DONE:
+		return enum.WorkStatusDone
+	default:
+		return ""
+	}
+}
+
+func MapWorkPriority(priority enum.WorkPriority) team_service.WorkPriority {
+	switch priority {
+	case enum.WorkPriorityLow:
+		return team_service.WorkPriority_WORK_PRIORITY_LOW
+	case enum.WorkPriorityMedium:
+		return team_service.WorkPriority_WORK_PRIORITY_MEDIUM
+	case enum.WorkPriorityHigh:
+		return team_service.WorkPriority_WORK_PRIORITY_HIGH
+	default:
+		return team_service.WorkPriority_WORK_PRIORITY_UNSPECIFIED
+	}
+}
+
+func MapProtoWorkPriority(priority team_service.WorkPriority) enum.WorkPriority {
+	switch priority {
+	case team_service.WorkPriority_WORK_PRIORITY_LOW:
+		return enum.WorkPriorityLow
+	case team_service.WorkPriority_WORK_PRIORITY_MEDIUM:
+		return enum.WorkPriorityMedium
+	case team_service.WorkPriority_WORK_PRIORITY_HIGH:
+		return enum.WorkPriorityHigh
 	default:
 		return ""
 	}

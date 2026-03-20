@@ -2,6 +2,7 @@ package grpccontroller
 
 import (
 	"context"
+	"fmt"
 	adapermapper "team_service/internal/adapter/mapper"
 	"team_service/internal/application/usecase"
 	"team_service/internal/infrastructure/share/utils"
@@ -87,7 +88,6 @@ func (c *GroupController) ListMembers(ctx context.Context, req *team_service.Lis
 	return adapermapper.ToListMembersGrpcResponse(resp), nil
 }
 
-
 func (c *GroupController) UpdateMemberRole(ctx context.Context, req *team_service.UpdateMemberRoleRequest) (*team_service.UpdateMemberRoleResponse, error) {
 	updateMemberRoleReq := adapermapper.ToUpdateMemberRoleRequest(req)
 
@@ -97,4 +97,27 @@ func (c *GroupController) UpdateMemberRole(ctx context.Context, req *team_servic
 	}
 
 	return adapermapper.ToUpdateMemberRoleGrpcResponse(resp), nil
+}
+
+func (c *GroupController) RemoveMember(ctx context.Context, req *team_service.RemoveMemberRequest) (*team_service.RemoveMemberResponse, error) {
+	removeMemberReq := adapermapper.ToRemoveMemberRequest(req)
+
+	resp, err := utils.WithSafePanic(ctx, c.logger, removeMemberReq, c.groupUseCase.RemoveMember)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapermapper.ToRemoveMemberGrpcResponse(resp), nil
+}
+
+func (c *GroupController) CreateInvite(ctx context.Context, req *team_service.CreateInviteRequest) (*team_service.CreateInviteResponse, error) {
+	fmt.Println("Received 111111111111111111111 CreateInvite request:", req)
+	createInviteReq := adapermapper.ToCreateInviteRequest(req)
+	fmt.Println("invite22222222222222222222UseCase:", createInviteReq)
+	resp, err := utils.WithSafePanic(ctx, c.logger, createInviteReq, c.groupUseCase.CreateInvite)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapermapper.ToCreateInviteGrpcResponse(resp), nil
 }
