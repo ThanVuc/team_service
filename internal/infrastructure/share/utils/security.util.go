@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"runtime/debug"
 	errorbase "team_service/internal/domain/common/apperror"
 
 	"github.com/thanvuc/go-core-lib/log"
@@ -59,4 +60,23 @@ func SafeHandler(
 		action = handler(d)
 		return
 	}
+}
+
+func WithSafeMQPanic(
+	logger log.LoggerV2,
+	job func() error,
+) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Error(
+				"panic recovered in MQ consume",
+				log.WithFields(
+					zap.Any("panic", r),
+					zap.ByteString("stack", debug.Stack()),
+				),
+			)
+		}
+	}()
+
+	return job()
 }
