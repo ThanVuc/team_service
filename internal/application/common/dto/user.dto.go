@@ -8,6 +8,7 @@ import (
 type UserSummaryDTO struct {
 	ID     string
 	Name   string
+	Email  string
 	Avatar *string
 }
 

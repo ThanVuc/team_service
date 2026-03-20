@@ -30,6 +30,25 @@ func ToUUID(id string) (pgtype.UUID, error) {
 	}, nil
 }
 
+func StringPtrToPgUUID(s *string) (pgtype.UUID, error) {
+	if s == nil || *s == "" {
+		return pgtype.UUID{Valid: false}, nil // SQL NULL
+	}
+
+	u, err := uuid.Parse(*s)
+	if err != nil {
+		return pgtype.UUID{}, err
+	}
+
+	var bytes [16]byte
+	copy(bytes[:], u[:])
+
+	return pgtype.UUID{
+		Bytes: bytes,
+		Valid: true,
+	}, nil
+}
+
 func RoundToTwoDecimal(val float64) float64 {
 	return math.Round(val*100) / 100
 }

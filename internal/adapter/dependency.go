@@ -47,7 +47,10 @@ func (d *Dependency) Start(ctx context.Context) error {
 		d.app.SprintUseCase,
 		d.infra.GetLogger(),
 	)
-	d.WorkController = grpccontroller.NewWorkController()
+	d.WorkController = grpccontroller.NewWorkController(
+		d.app.WorkUseCase,
+		d.infra.GetLogger(),
+	)
 
 	// ===================================
 	// Messaging Handlers

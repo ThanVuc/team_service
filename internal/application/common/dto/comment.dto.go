@@ -25,3 +25,14 @@ type CommentResponse struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+
+type CommentMeta struct {
+	ID        string
+	WorkID    string
+	CreatorID string
+}
+
+type CommentListResponse struct {
+	Total    int32
+	Comments []CommentResponse
+}

@@ -27,3 +27,14 @@ type ChecklistItemResponse struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+
+type ChecklistItemMeta struct {
+	ID     string
+	WorkID string
+}
+
+type ChecklistSummaryResponse struct {
+	Total     int32
+	Completed int32
+	Items     []ChecklistItemResponse
+}
