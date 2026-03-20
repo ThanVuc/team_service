@@ -35,6 +35,22 @@ type (
 		DeleteSprint(ctx context.Context, req *appdto.DeleteSprintRequest) (*appdto.BaseResponse[appdto.DeleteSprintResponse], errorbase.AppError)
 	}
 
+	WorkUseCase interface {
+		CreateWork(ctx context.Context, req *appdto.CreateWorkRequest) (*appdto.BaseResponse[appdto.WorkResponse], errorbase.AppError)
+		GetWork(ctx context.Context, req *appdto.GetWorkRequest) (*appdto.BaseResponse[appdto.WorkResponse], errorbase.AppError)
+		ListWorks(ctx context.Context, req *appdto.ListWorksRequest) (*appdto.BaseResponse[appdto.ListWorksResponse], errorbase.AppError)
+		UpdateWork(ctx context.Context, req *appdto.UpdateWorkRequest) (*appdto.BaseResponse[appdto.WorkResponse], errorbase.AppError)
+		DeleteWork(ctx context.Context, req *appdto.DeleteWorkRequest) (*appdto.BaseResponse[appdto.DeleteWorkResponse], errorbase.AppError)
+
+		CreateChecklistItem(ctx context.Context, req *appdto.CreateChecklistItemRequest) (*appdto.BaseResponse[appdto.ChecklistItemResponse], errorbase.AppError)
+		UpdateChecklistItem(ctx context.Context, req *appdto.UpdateChecklistItemRequest) (*appdto.BaseResponse[appdto.ChecklistItemResponse], errorbase.AppError)
+		DeleteChecklistItem(ctx context.Context, req *appdto.DeleteChecklistItemRequest) (*appdto.BaseResponse[appdto.ChecklistItemResponse], errorbase.AppError)
+
+		CreateComment(ctx context.Context, req *appdto.CreateCommentRequest) (*appdto.BaseResponse[appdto.CommentListResponse], errorbase.AppError)
+		UpdateComment(ctx context.Context, req *appdto.UpdateCommentRequest) (*appdto.BaseResponse[appdto.CommentListResponse], errorbase.AppError)
+		DeleteComment(ctx context.Context, req *appdto.DeleteCommentRequest) (*appdto.BaseResponse[appdto.CommentListResponse], errorbase.AppError)
+	}
+
 	UserUseCase interface {
 		SyncUserData(ctx context.Context) func(d rabbitmq.Delivery) rabbitmq.Action
 	}
@@ -61,6 +77,19 @@ func NewSprintUseCase(
 	return &sprintUseCase{
 		store:      store,
 		sprintRepo: store.SprintRepository(),
+		validator:  validator,
+		authHelper: authHelper,
+	}
+}
+
+func NewWorkUseCase(
+	store istore.Store,
+	validator *appvalidation.WorkValidator,
+	authHelper *apphelper.AuthHelper,
+) WorkUseCase {
+	return &workUseCase{
+		store:      store,
+		workRepo:   store.WorkRepository(),
 		validator:  validator,
 		authHelper: authHelper,
 	}

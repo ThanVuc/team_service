@@ -167,7 +167,6 @@ func ToListMembersGrpcResponse(
 
 	return &team_service.ListMembersResponse{
 		Members: members,
-		Total:   int32(resp.Data.Total),
 		Error:   ToProtoError(resp.Error),
 	}
 

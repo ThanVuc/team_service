@@ -79,6 +79,62 @@ func MapProtoSprintStatus(status team_service.SprintStatus) enum.SprintStatus {
 	}
 }
 
+func MapWorkStatus(status enum.WorkStatus) team_service.WorkStatus {
+	switch status {
+	case enum.WorkStatusTodo:
+		return team_service.WorkStatus_WORK_STATUS_TODO
+	case enum.WorkStatusInProgress:
+		return team_service.WorkStatus_WORK_STATUS_IN_PROGRESS
+	case enum.WorkStatusInReview:
+		return team_service.WorkStatus_WORK_STATUS_IN_REVIEW
+	case enum.WorkStatusDone:
+		return team_service.WorkStatus_WORK_STATUS_DONE
+	default:
+		return team_service.WorkStatus_WORK_STATUS_UNSPECIFIED
+	}
+}
+
+func MapProtoWorkStatus(status team_service.WorkStatus) enum.WorkStatus {
+	switch status {
+	case team_service.WorkStatus_WORK_STATUS_TODO:
+		return enum.WorkStatusTodo
+	case team_service.WorkStatus_WORK_STATUS_IN_PROGRESS:
+		return enum.WorkStatusInProgress
+	case team_service.WorkStatus_WORK_STATUS_IN_REVIEW:
+		return enum.WorkStatusInReview
+	case team_service.WorkStatus_WORK_STATUS_DONE:
+		return enum.WorkStatusDone
+	default:
+		return ""
+	}
+}
+
+func MapWorkPriority(priority enum.WorkPriority) team_service.WorkPriority {
+	switch priority {
+	case enum.WorkPriorityLow:
+		return team_service.WorkPriority_WORK_PRIORITY_LOW
+	case enum.WorkPriorityMedium:
+		return team_service.WorkPriority_WORK_PRIORITY_MEDIUM
+	case enum.WorkPriorityHigh:
+		return team_service.WorkPriority_WORK_PRIORITY_HIGH
+	default:
+		return team_service.WorkPriority_WORK_PRIORITY_UNSPECIFIED
+	}
+}
+
+func MapProtoWorkPriority(priority team_service.WorkPriority) enum.WorkPriority {
+	switch priority {
+	case team_service.WorkPriority_WORK_PRIORITY_LOW:
+		return enum.WorkPriorityLow
+	case team_service.WorkPriority_WORK_PRIORITY_MEDIUM:
+		return enum.WorkPriorityMedium
+	case team_service.WorkPriority_WORK_PRIORITY_HIGH:
+		return enum.WorkPriorityHigh
+	default:
+		return ""
+	}
+}
+
 func FromDateToTime(date *team_service.Date) time.Time {
 	if date == nil {
 		return time.Time{}

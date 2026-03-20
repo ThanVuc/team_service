@@ -11,6 +11,560 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createChecklistItem = `-- name: CreateChecklistItem :one
+INSERT INTO checklist_items (
+	id,
+	work_id,
+	name,
+	is_completed,
+	created_at,
+	updated_at
+) VALUES (
+	$1,
+	$2,
+	$3,
+	false,
+	NOW(),
+	NOW()
+)
+RETURNING id, work_id, name, is_completed, created_at, updated_at
+`
+
+type CreateChecklistItemParams struct {
+	ID     pgtype.UUID
+	WorkID pgtype.UUID
+	Name   string
+}
+
+func (q *Queries) CreateChecklistItem(ctx context.Context, arg CreateChecklistItemParams) (ChecklistItem, error) {
+	row := q.db.QueryRow(ctx, createChecklistItem, arg.ID, arg.WorkID, arg.Name)
+	var i ChecklistItem
+	err := row.Scan(
+		&i.ID,
+		&i.WorkID,
+		&i.Name,
+		&i.IsCompleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createComment = `-- name: CreateComment :one
+WITH inserted AS (
+	INSERT INTO comments (
+		id,
+		work_id,
+		creator_id,
+		content,
+		created_at,
+		updated_at
+	) VALUES (
+		$1,
+		$2,
+		$3,
+		$4,
+		NOW(),
+		NOW()
+	)
+	RETURNING
+		id,
+		work_id,
+		creator_id,
+		content,
+		created_at,
+		updated_at
+)
+SELECT
+	i.id,
+	i.work_id,
+	i.creator_id,
+	i.content,
+	i.created_at,
+	i.updated_at,
+	u.email AS creator_email,
+	u.avatar_url AS creator_avatar_url
+FROM inserted i
+JOIN users u ON u.id = i.creator_id
+`
+
+type CreateCommentParams struct {
+	ID        pgtype.UUID
+	WorkID    pgtype.UUID
+	CreatorID pgtype.UUID
+	Content   string
+}
+
+type CreateCommentRow struct {
+	ID               pgtype.UUID
+	WorkID           pgtype.UUID
+	CreatorID        pgtype.UUID
+	Content          string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	CreatorEmail     string
+	CreatorAvatarUrl pgtype.Text
+}
+
+func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (CreateCommentRow, error) {
+	row := q.db.QueryRow(ctx, createComment,
+		arg.ID,
+		arg.WorkID,
+		arg.CreatorID,
+		arg.Content,
+	)
+	var i CreateCommentRow
+	err := row.Scan(
+		&i.ID,
+		&i.WorkID,
+		&i.CreatorID,
+		&i.Content,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CreatorEmail,
+		&i.CreatorAvatarUrl,
+	)
+	return i, err
+}
+
+const createWork = `-- name: CreateWork :one
+INSERT INTO works (
+	id,
+	group_id,
+	sprint_id,
+	name,
+	description,
+	status,
+	assignee_id,
+	creator_id,
+	estimate_hours,
+	story_point,
+	priority,
+	due_date,
+	created_at,
+	updated_at
+) VALUES (
+	$1,
+	$2,
+	$3,
+	$4,
+	$5,
+	'todo',
+	NULL,
+	$6,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NOW(),
+	NOW()
+)
+RETURNING id, group_id, sprint_id, name, description, status, assignee_id, creator_id, estimate_hours, story_point, priority, due_date, created_at, updated_at
+`
+
+type CreateWorkParams struct {
+	ID          pgtype.UUID
+	GroupID     pgtype.UUID
+	SprintID    pgtype.UUID
+	Name        string
+	Description pgtype.Text
+	CreatorID   pgtype.UUID
+}
+
+func (q *Queries) CreateWork(ctx context.Context, arg CreateWorkParams) (Work, error) {
+	row := q.db.QueryRow(ctx, createWork,
+		arg.ID,
+		arg.GroupID,
+		arg.SprintID,
+		arg.Name,
+		arg.Description,
+		arg.CreatorID,
+	)
+	var i Work
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.SprintID,
+		&i.Name,
+		&i.Description,
+		&i.Status,
+		&i.AssigneeID,
+		&i.CreatorID,
+		&i.EstimateHours,
+		&i.StoryPoint,
+		&i.Priority,
+		&i.DueDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteChecklistItem = `-- name: DeleteChecklistItem :one
+WITH deleted AS (
+	DELETE FROM checklist_items
+	WHERE id = $1
+	RETURNING id
+)
+SELECT
+	EXISTS(SELECT 1 FROM deleted) AS success,
+	(SELECT id FROM deleted) AS id,
+	NOW()::timestamptz AS deleted_at
+`
+
+type DeleteChecklistItemRow struct {
+	Success   bool
+	ID        pgtype.UUID
+	DeletedAt pgtype.Timestamptz
+}
+
+func (q *Queries) DeleteChecklistItem(ctx context.Context, id pgtype.UUID) (DeleteChecklistItemRow, error) {
+	row := q.db.QueryRow(ctx, deleteChecklistItem, id)
+	var i DeleteChecklistItemRow
+	err := row.Scan(&i.Success, &i.ID, &i.DeletedAt)
+	return i, err
+}
+
+const deleteComment = `-- name: DeleteComment :one
+WITH deleted AS (
+	DELETE FROM comments
+	WHERE id = $1
+	RETURNING id
+)
+SELECT
+	EXISTS(SELECT 1 FROM deleted) AS success,
+	NOW()::timestamptz AS deleted_at
+`
+
+type DeleteCommentRow struct {
+	Success   bool
+	DeletedAt pgtype.Timestamptz
+}
+
+func (q *Queries) DeleteComment(ctx context.Context, id pgtype.UUID) (DeleteCommentRow, error) {
+	row := q.db.QueryRow(ctx, deleteComment, id)
+	var i DeleteCommentRow
+	err := row.Scan(&i.Success, &i.DeletedAt)
+	return i, err
+}
+
+const deleteWork = `-- name: DeleteWork :one
+WITH deleted AS (
+	DELETE FROM works
+	WHERE id = $1
+	RETURNING id
+)
+SELECT
+	EXISTS(SELECT 1 FROM deleted) AS success,
+	NOW()::timestamptz AS deleted_at
+`
+
+type DeleteWorkRow struct {
+	Success   bool
+	DeletedAt pgtype.Timestamptz
+}
+
+func (q *Queries) DeleteWork(ctx context.Context, id pgtype.UUID) (DeleteWorkRow, error) {
+	row := q.db.QueryRow(ctx, deleteWork, id)
+	var i DeleteWorkRow
+	err := row.Scan(&i.Success, &i.DeletedAt)
+	return i, err
+}
+
+const getCheckListByWorkId = `-- name: GetCheckListByWorkId :many
+SELECT
+	id,
+	work_id,
+	name,
+	is_completed,
+	created_at,
+	updated_at
+FROM checklist_items
+WHERE work_id = $1
+ORDER BY created_at ASC
+`
+
+func (q *Queries) GetCheckListByWorkId(ctx context.Context, workID pgtype.UUID) ([]ChecklistItem, error) {
+	rows, err := q.db.Query(ctx, getCheckListByWorkId, workID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ChecklistItem
+	for rows.Next() {
+		var i ChecklistItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkID,
+			&i.Name,
+			&i.IsCompleted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getChecklistItemMeta = `-- name: GetChecklistItemMeta :one
+SELECT
+	id,
+	work_id
+FROM checklist_items
+WHERE id = $1
+`
+
+type GetChecklistItemMetaRow struct {
+	ID     pgtype.UUID
+	WorkID pgtype.UUID
+}
+
+func (q *Queries) GetChecklistItemMeta(ctx context.Context, id pgtype.UUID) (GetChecklistItemMetaRow, error) {
+	row := q.db.QueryRow(ctx, getChecklistItemMeta, id)
+	var i GetChecklistItemMetaRow
+	err := row.Scan(&i.ID, &i.WorkID)
+	return i, err
+}
+
+const getCommentMeta = `-- name: GetCommentMeta :one
+SELECT
+	id,
+	work_id,
+	creator_id
+FROM comments
+WHERE id = $1
+`
+
+type GetCommentMetaRow struct {
+	ID        pgtype.UUID
+	WorkID    pgtype.UUID
+	CreatorID pgtype.UUID
+}
+
+func (q *Queries) GetCommentMeta(ctx context.Context, id pgtype.UUID) (GetCommentMetaRow, error) {
+	row := q.db.QueryRow(ctx, getCommentMeta, id)
+	var i GetCommentMetaRow
+	err := row.Scan(&i.ID, &i.WorkID, &i.CreatorID)
+	return i, err
+}
+
+const getCommentsByWorkId = `-- name: GetCommentsByWorkId :many
+SELECT
+	c.id,
+	c.work_id,
+	c.creator_id,
+	c.content,
+	c.created_at,
+	c.updated_at,
+	u.email AS creator_email,
+	u.avatar_url AS creator_avatar_url
+FROM comments c
+JOIN users u ON u.id = c.creator_id
+WHERE c.work_id = $1
+ORDER BY c.created_at ASC
+`
+
+type GetCommentsByWorkIdRow struct {
+	ID               pgtype.UUID
+	WorkID           pgtype.UUID
+	CreatorID        pgtype.UUID
+	Content          string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	CreatorEmail     string
+	CreatorAvatarUrl pgtype.Text
+}
+
+func (q *Queries) GetCommentsByWorkId(ctx context.Context, workID pgtype.UUID) ([]GetCommentsByWorkIdRow, error) {
+	rows, err := q.db.Query(ctx, getCommentsByWorkId, workID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCommentsByWorkIdRow
+	for rows.Next() {
+		var i GetCommentsByWorkIdRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkID,
+			&i.CreatorID,
+			&i.Content,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CreatorEmail,
+			&i.CreatorAvatarUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getWork = `-- name: GetWork :one
+SELECT
+	w.id,
+	w.group_id,
+	w.sprint_id,
+	w.name,
+	w.description,
+	w.status,
+	w.assignee_id,
+	w.creator_id,
+	w.estimate_hours,
+	w.story_point,
+	w.priority,
+	w.due_date,
+	w.created_at,
+	w.updated_at,
+	s.name AS sprint_name,
+	u.email AS assignee_email,
+	u.avatar_url AS assignee_avatar_url
+FROM works w
+LEFT JOIN sprints s ON s.id = w.sprint_id
+LEFT JOIN users u ON u.id = w.assignee_id
+WHERE w.id = $1
+`
+
+type GetWorkRow struct {
+	ID                pgtype.UUID
+	GroupID           pgtype.UUID
+	SprintID          pgtype.UUID
+	Name              string
+	Description       pgtype.Text
+	Status            string
+	AssigneeID        pgtype.UUID
+	CreatorID         pgtype.UUID
+	EstimateHours     pgtype.Float8
+	StoryPoint        pgtype.Int4
+	Priority          pgtype.Text
+	DueDate           pgtype.Date
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+	SprintName        pgtype.Text
+	AssigneeEmail     pgtype.Text
+	AssigneeAvatarUrl pgtype.Text
+}
+
+func (q *Queries) GetWork(ctx context.Context, id pgtype.UUID) (GetWorkRow, error) {
+	row := q.db.QueryRow(ctx, getWork, id)
+	var i GetWorkRow
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.SprintID,
+		&i.Name,
+		&i.Description,
+		&i.Status,
+		&i.AssigneeID,
+		&i.CreatorID,
+		&i.EstimateHours,
+		&i.StoryPoint,
+		&i.Priority,
+		&i.DueDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SprintName,
+		&i.AssigneeEmail,
+		&i.AssigneeAvatarUrl,
+	)
+	return i, err
+}
+
+const getWorksBySprint = `-- name: GetWorksBySprint :many
+SELECT
+    w.id,
+    w.group_id,
+    w.sprint_id,
+    w.name,
+    w.description,
+    w.status,
+    w.assignee_id,
+    w.creator_id,
+    w.estimate_hours,
+    w.story_point,
+    w.priority,
+    w.due_date,
+    w.created_at,
+    w.updated_at,
+    u.email AS assignee_email,
+    u.avatar_url AS assignee_avatar_url
+FROM works w
+LEFT JOIN users u ON u.id = w.assignee_id
+WHERE w.group_id = $1
+AND w.sprint_id IS NOT DISTINCT FROM $2
+ORDER BY w.updated_at DESC
+`
+
+type GetWorksBySprintParams struct {
+	GroupID  pgtype.UUID
+	SprintID pgtype.UUID
+}
+
+type GetWorksBySprintRow struct {
+	ID                pgtype.UUID
+	GroupID           pgtype.UUID
+	SprintID          pgtype.UUID
+	Name              string
+	Description       pgtype.Text
+	Status            string
+	AssigneeID        pgtype.UUID
+	CreatorID         pgtype.UUID
+	EstimateHours     pgtype.Float8
+	StoryPoint        pgtype.Int4
+	Priority          pgtype.Text
+	DueDate           pgtype.Date
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+	AssigneeEmail     pgtype.Text
+	AssigneeAvatarUrl pgtype.Text
+}
+
+func (q *Queries) GetWorksBySprint(ctx context.Context, arg GetWorksBySprintParams) ([]GetWorksBySprintRow, error) {
+	rows, err := q.db.Query(ctx, getWorksBySprint, arg.GroupID, arg.SprintID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetWorksBySprintRow
+	for rows.Next() {
+		var i GetWorksBySprintRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.GroupID,
+			&i.SprintID,
+			&i.Name,
+			&i.Description,
+			&i.Status,
+			&i.AssigneeID,
+			&i.CreatorID,
+			&i.EstimateHours,
+			&i.StoryPoint,
+			&i.Priority,
+			&i.DueDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.AssigneeEmail,
+			&i.AssigneeAvatarUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const unassignWorksByMember = `-- name: UnassignWorksByMember :exec
 UPDATE works
 SET assignee_id = NULL
@@ -26,4 +580,150 @@ type UnassignWorksByMemberParams struct {
 func (q *Queries) UnassignWorksByMember(ctx context.Context, arg UnassignWorksByMemberParams) error {
 	_, err := q.db.Exec(ctx, unassignWorksByMember, arg.GroupID, arg.AssigneeID)
 	return err
+}
+
+const updateChecklistItem = `-- name: UpdateChecklistItem :one
+UPDATE checklist_items
+SET
+	name = COALESCE($1, name),
+	is_completed = COALESCE($2, is_completed),
+	updated_at = NOW()
+WHERE id = $3
+RETURNING
+	id,
+	CASE WHEN $1::text IS NOT NULL THEN name ELSE NULL END AS name,
+	CASE WHEN $2::boolean IS NOT NULL THEN is_completed ELSE NULL END AS is_completed,
+	updated_at
+`
+
+type UpdateChecklistItemParams struct {
+	Name        pgtype.Text
+	IsCompleted pgtype.Bool
+	ID          pgtype.UUID
+}
+
+type UpdateChecklistItemRow struct {
+	ID          pgtype.UUID
+	Name        interface{}
+	IsCompleted interface{}
+	UpdatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateChecklistItem(ctx context.Context, arg UpdateChecklistItemParams) (UpdateChecklistItemRow, error) {
+	row := q.db.QueryRow(ctx, updateChecklistItem, arg.Name, arg.IsCompleted, arg.ID)
+	var i UpdateChecklistItemRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.IsCompleted,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateComment = `-- name: UpdateComment :one
+UPDATE comments
+SET
+	content = $1,
+	updated_at = NOW()
+WHERE id = $2
+RETURNING id, work_id, creator_id, content, created_at, updated_at
+`
+
+type UpdateCommentParams struct {
+	Content string
+	ID      pgtype.UUID
+}
+
+func (q *Queries) UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error) {
+	row := q.db.QueryRow(ctx, updateComment, arg.Content, arg.ID)
+	var i Comment
+	err := row.Scan(
+		&i.ID,
+		&i.WorkID,
+		&i.CreatorID,
+		&i.Content,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateWork = `-- name: UpdateWork :one
+UPDATE works
+SET
+	name = COALESCE($1, name),
+	description = COALESCE($2, description),
+	sprint_id = COALESCE($3, sprint_id),
+	assignee_id = COALESCE($4, assignee_id),
+	status = COALESCE($5, status),
+	story_point = COALESCE($6, story_point),
+	due_date = COALESCE($7, due_date),
+	priority = COALESCE($8, priority),
+	updated_at = NOW()
+WHERE id = $9
+RETURNING
+	id,
+	CASE WHEN $1::text IS NOT NULL THEN name ELSE NULL END AS name,
+	CASE WHEN $2::text IS NOT NULL THEN description ELSE NULL END AS description,
+	CASE WHEN $3::uuid IS NOT NULL THEN sprint_id ELSE NULL END AS sprint_id,
+	CASE WHEN $4::uuid IS NOT NULL THEN assignee_id ELSE NULL END AS assignee_id,
+	CASE WHEN $5::text IS NOT NULL THEN status ELSE NULL END AS status,
+	CASE WHEN $6::int IS NOT NULL THEN story_point ELSE NULL END AS story_point,
+	CASE WHEN $7::date IS NOT NULL THEN due_date ELSE NULL END AS due_date,
+	CASE WHEN $8::text IS NOT NULL THEN priority ELSE NULL END AS priority,
+	updated_at
+`
+
+type UpdateWorkParams struct {
+	Name        pgtype.Text
+	Description pgtype.Text
+	SprintID    pgtype.UUID
+	AssigneeID  pgtype.UUID
+	Status      pgtype.Text
+	StoryPoint  pgtype.Int4
+	DueDate     pgtype.Date
+	Priority    pgtype.Text
+	ID          pgtype.UUID
+}
+
+type UpdateWorkRow struct {
+	ID          pgtype.UUID
+	Name        interface{}
+	Description interface{}
+	SprintID    interface{}
+	AssigneeID  interface{}
+	Status      interface{}
+	StoryPoint  interface{}
+	DueDate     interface{}
+	Priority    interface{}
+	UpdatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateWork(ctx context.Context, arg UpdateWorkParams) (UpdateWorkRow, error) {
+	row := q.db.QueryRow(ctx, updateWork,
+		arg.Name,
+		arg.Description,
+		arg.SprintID,
+		arg.AssigneeID,
+		arg.Status,
+		arg.StoryPoint,
+		arg.DueDate,
+		arg.Priority,
+		arg.ID,
+	)
+	var i UpdateWorkRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.SprintID,
+		&i.AssigneeID,
+		&i.Status,
+		&i.StoryPoint,
+		&i.DueDate,
+		&i.Priority,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
