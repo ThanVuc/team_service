@@ -253,3 +253,9 @@ WITH deleted AS (
 SELECT
 	EXISTS(SELECT 1 FROM deleted) AS success,
 	NOW()::timestamptz AS deleted_at;
+
+-- name: UnassignWorksByMember :exec
+UPDATE works
+SET assignee_id = NULL
+WHERE group_id = $1
+AND assignee_id = $2;

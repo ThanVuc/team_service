@@ -26,6 +26,28 @@ func (q *Queries) CheckGroupExists(ctx context.Context, id pgtype.UUID) (bool, e
 	return exists, err
 }
 
+const checkMemberExistsByEmail = `-- name: CheckMemberExistsByEmail :one
+SELECT EXISTS (
+    SELECT 1
+    FROM group_members gm
+    JOIN users u ON gm.user_id = u.id
+    WHERE gm.group_id = $1
+    AND u.email = $2
+)
+`
+
+type CheckMemberExistsByEmailParams struct {
+	GroupID pgtype.UUID
+	Email   string
+}
+
+func (q *Queries) CheckMemberExistsByEmail(ctx context.Context, arg CheckMemberExistsByEmailParams) (bool, error) {
+	row := q.db.QueryRow(ctx, checkMemberExistsByEmail, arg.GroupID, arg.Email)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const countGroupMembersByGroupID = `-- name: CountGroupMembersByGroupID :one
 SELECT COUNT(*)
 FROM group_members
@@ -235,6 +257,22 @@ func (q *Queries) Ping(ctx context.Context) (int32, error) {
 	var column_1 int32
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const removeMember = `-- name: RemoveMember :exec
+DELETE FROM group_members
+WHERE group_id = $1
+AND user_id = $2
+`
+
+type RemoveMemberParams struct {
+	GroupID pgtype.UUID
+	UserID  pgtype.UUID
+}
+
+func (q *Queries) RemoveMember(ctx context.Context, arg RemoveMemberParams) error {
+	_, err := q.db.Exec(ctx, removeMember, arg.GroupID, arg.UserID)
+	return err
 }
 
 const updateGroup = `-- name: UpdateGroup :one

@@ -23,4 +23,6 @@ type WorkRepository interface {
 	CreateComment(ctx context.Context, comment *entity.Comment) (*appdto.CommentListResponse, errorbase.AppError)
 	UpdateComment(ctx context.Context, req *appdto.UpdateCommentRequest) (*appdto.CommentListResponse, errorbase.AppError)
 	DeleteComment(ctx context.Context, commentID string) (*appdto.CommentListResponse, errorbase.AppError)
+
+	UnassignWorksByMember(ctx context.Context, groupID string, userID string) errorbase.AppError
 }

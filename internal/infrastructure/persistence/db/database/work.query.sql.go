@@ -565,6 +565,23 @@ func (q *Queries) GetWorksBySprint(ctx context.Context, arg GetWorksBySprintPara
 	return items, nil
 }
 
+const unassignWorksByMember = `-- name: UnassignWorksByMember :exec
+UPDATE works
+SET assignee_id = NULL
+WHERE group_id = $1
+AND assignee_id = $2
+`
+
+type UnassignWorksByMemberParams struct {
+	GroupID    pgtype.UUID
+	AssigneeID pgtype.UUID
+}
+
+func (q *Queries) UnassignWorksByMember(ctx context.Context, arg UnassignWorksByMemberParams) error {
+	_, err := q.db.Exec(ctx, unassignWorksByMember, arg.GroupID, arg.AssigneeID)
+	return err
+}
+
 const updateChecklistItem = `-- name: UpdateChecklistItem :one
 UPDATE checklist_items
 SET

@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"fmt"
+	"log"
 	appdto "team_service/internal/application/common/dto"
 	irepository "team_service/internal/application/common/interface/repository"
 	istore "team_service/internal/application/common/interface/store"
@@ -395,6 +397,89 @@ func (uc *groupUseCase) UpdateMemberRole(ctx context.Context, req *appdto.Update
 
 	return &appdto.BaseResponse[appdto.MemberResponse]{
 		Data:  newRoler,
+		Error: nil,
+	}, nil
+
+}
+
+func (uc *groupUseCase) RemoveMember(ctx context.Context, req *appdto.RemoveMemberRequest) (*appdto.BaseResponse[appdto.RemoveMemberResponse], errorbase.AppError) {
+	err := uc.validator.ValidateRemoveMember(ctx, req)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.RemoveMemberResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	err = uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
+		err = repo.WorkRepository().UnassignWorksByMember(ctx, req.GroupID, req.MemberId)
+		if err != nil {
+			return err
+		}
+
+		err = repo.GroupRepository().RemoveMember(ctx, req.GroupID, req.MemberId)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &appdto.BaseResponse[appdto.RemoveMemberResponse]{
+		Data: &appdto.RemoveMemberResponse{
+			Success: true,
+		},
+		Error: nil,
+	}, nil
+}
+
+func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInviteRequest) (*appdto.BaseResponse[appdto.InviteResponse], errorbase.AppError) {
+	invite, err := uc.validator.ValidateCreateInvitation(ctx, req)
+	fmt.Println("invite after validation:", invite)
+	if err != nil {
+		log.Printf("Validation error in CreateInvite: %v", err)
+		return &appdto.BaseResponse[appdto.InviteResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	var createdInvite *entity.Invite
+	createdInvite, err = uc.store.InviteRepository().CreateInvite(ctx, invite)
+	if err != nil {
+		log.Printf("Error creating invite in CreateInvite: %v", err)
+		return nil, err
+	}
+
+	if createdInvite == nil {
+		return &appdto.BaseResponse[appdto.InviteResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    errdict.ErrInternal.Code,
+				Message: errdict.ErrInternal.Title,
+				Detail:  errdict.ErrInternal.Detail,
+			},
+		}, nil
+	}
+
+	return &appdto.BaseResponse[appdto.InviteResponse]{
+		Data: &appdto.InviteResponse{
+			Code:      createdInvite.Token,
+			ExpiresAt: createdInvite.ExpiresAt,
+			CreatedAt: createdInvite.CreatedAt,
+		},
 		Error: nil,
 	}, nil
 

@@ -31,3 +31,7 @@ func (r *repositoryContainer) WorkRepository() irepository.WorkRepository {
 func (r *repositoryContainer) UserRepository() irepository.UserRepository {
 	return repository.NewUserRepository(r.q)
 }
+
+func (r *repositoryContainer) InviteRepository() irepository.InviteRepository {
+	return repository.NewInviteRepository(r.q)
+}

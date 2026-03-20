@@ -10,14 +10,14 @@ type ListMembersRequest struct {
 }
 
 type UpdateMemberRoleRequest struct {
-	GroupID string
-	MemberId  string
-	Role    enum.GroupRole
+	GroupID  string
+	MemberId string
+	Role     enum.GroupRole
 }
 
 type RemoveMemberRequest struct {
-	GroupID string
-	UserID  string
+	GroupID  string
+	MemberId string
 }
 
 type MemberResponse struct {
@@ -34,4 +34,8 @@ type MemberResponse struct {
 type ListMembersResponse struct {
 	Members []MemberResponse
 	Total   int
+}
+
+type RemoveMemberResponse struct {
+	Success bool
 }

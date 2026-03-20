@@ -18,4 +18,6 @@ type GroupRepository interface {
 	DeleteGroup(ctx context.Context, groupID string) errorbase.AppError
 	CountManagerAndMemberByGroupID(ctx context.Context, groupID string) (int64, errorbase.AppError)
 	UpdateMemberRole(ctx context.Context, userID string, groupID string, newRole string) (*appdto.MemberResponse, errorbase.AppError)
+	RemoveMember(ctx context.Context, groupID string, userID string) errorbase.AppError
+	CheckMemberExistsByEmail(ctx context.Context, groupID string, email string) (bool, errorbase.AppError)
 }

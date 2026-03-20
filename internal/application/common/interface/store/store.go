@@ -11,6 +11,7 @@ type RepositoryContainer interface {
 	SprintRepository() irepository.SprintRepository
 	WorkRepository() irepository.WorkRepository
 	UserRepository() irepository.UserRepository
+	InviteRepository() irepository.InviteRepository
 }
 
 type Store interface {
@@ -19,4 +20,5 @@ type Store interface {
 	SprintRepository() irepository.SprintRepository
 	WorkRepository() irepository.WorkRepository
 	UserRepository() irepository.UserRepository
+	InviteRepository() irepository.InviteRepository
 }

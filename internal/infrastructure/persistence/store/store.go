@@ -67,3 +67,7 @@ func (s *Store) WorkRepository() irepository.WorkRepository {
 func (s *Store) UserRepository() irepository.UserRepository {
 	return s.repocontainer.UserRepository()
 }
+
+func (s *Store) InviteRepository() irepository.InviteRepository {
+	return s.repocontainer.InviteRepository()
+}
