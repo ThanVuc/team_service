@@ -3,11 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
-<<<<<<< Updated upstream
-	"log"
-=======
 	appconstant "team_service/internal/application/common/constant"
->>>>>>> Stashed changes
 	appdto "team_service/internal/application/common/dto"
 	apphelper "team_service/internal/application/common/helper"
 	irepository "team_service/internal/application/common/interface/repository"
@@ -470,7 +466,6 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 	invite, err := uc.validator.ValidateCreateInvitation(ctx, req)
 	fmt.Println("invite after validation:", invite)
 	if err != nil {
-		log.Printf("Validation error in CreateInvite: %v", err)
 		return &appdto.BaseResponse[appdto.InviteResponse]{
 			Data: nil,
 			Error: &appdto.ErrorResponse{
@@ -484,7 +479,6 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 	var createdInvite *entity.Invite
 	createdInvite, err = uc.store.InviteRepository().CreateInvite(ctx, invite)
 	if err != nil {
-		log.Printf("Error creating invite in CreateInvite: %v", err)
 		return nil, err
 	}
 
