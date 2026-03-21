@@ -60,12 +60,14 @@ func NewGroupUseCase(
 	store istore.Store,
 	validator *appvalidation.GroupValidator,
 	authHelper *apphelper.AuthHelper,
+	notificationHelper *apphelper.NotificationHelper,
 ) GroupUseCase {
 	return &groupUseCase{
-		store:     store,
-		groupRepo: store.GroupRepository(),
-		userRepo:  store.UserRepository(),
-		validator: validator,
+		store:              store,
+		groupRepo:          store.GroupRepository(),
+		userRepo:           store.UserRepository(),
+		validator:          validator,
+		notificationHelper: notificationHelper,
 	}
 }
 

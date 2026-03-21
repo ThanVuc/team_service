@@ -48,4 +48,10 @@ var (
 		Title:  "Internal Server Error",
 		Detail: domainhelper.Ptr("An unexpected error occurred on the server."),
 	}
+
+	ErrPublishMessage = errorbase.ErrorInfo{
+		Code:   "ts.messaging.publish-error",
+		Title:  "Message Publish Error",
+		Detail: domainhelper.Ptr("Failed to publish message to the message broker."),
+	}
 )
