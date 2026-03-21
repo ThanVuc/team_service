@@ -58,12 +58,18 @@ func (d *Dependency) InitUseCases(ctx context.Context) error {
 		d.infra.GetLogger(),
 	)
 
+	notificationHelper := apphelper.NewNotificationHelper(
+		d.infra.GetEventBus(),
+		d.infra.GetLogger(),
+	)
+
 	// ============ use cases ============
 	d.UserUseCase = usecase.NewUserUseCase(store, d.infra.GetLogger())
 	d.GroupUseCase = usecase.NewGroupUseCase(
 		store,
 		groupValidator,
 		authHelper,
+		notificationHelper,
 	)
 	d.SprintUseCase = usecase.NewSprintUseCase(
 		store,

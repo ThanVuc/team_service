@@ -3,8 +3,13 @@ package usecase
 import (
 	"context"
 	"fmt"
+<<<<<<< Updated upstream
 	"log"
+=======
+	appconstant "team_service/internal/application/common/constant"
+>>>>>>> Stashed changes
 	appdto "team_service/internal/application/common/dto"
+	apphelper "team_service/internal/application/common/helper"
 	irepository "team_service/internal/application/common/interface/repository"
 	istore "team_service/internal/application/common/interface/store"
 	appmapper "team_service/internal/application/common/mapper"
@@ -21,10 +26,11 @@ import (
 )
 
 type groupUseCase struct {
-	store     istore.Store
-	groupRepo irepository.GroupRepository
-	userRepo  irepository.UserRepository
-	validator *appvalidation.GroupValidator
+	store              istore.Store
+	groupRepo          irepository.GroupRepository
+	userRepo           irepository.UserRepository
+	validator          *appvalidation.GroupValidator
+	notificationHelper *apphelper.NotificationHelper
 }
 
 func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError) {
@@ -40,6 +46,7 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroup
 			},
 		}, nil
 	}
+
 	err = uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
 		group, err = repo.GroupRepository().CreateGroup(ctx, group, user.ID)
 		if err != nil {
@@ -85,6 +92,24 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroup
 		nil,
 		1,
 	)
+
+	uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
+		EventType:   appconstant.EventTypeGroupCreated,
+		SenderID:    user.ID,
+		ReceiverIDs: []string{user.ID},
+		Payload: appdto.TeamNotificationMessagePayload{
+			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeGroupCreated),
+			Message:         fmt.Sprintf("Bạn đã tạo nhóm %s thành công", group.Name),
+			Link:            utils.Ptr("https://www.schedulr.site/"),
+			ImageURL:        nil,
+			CorrelationID:   group.ID,
+			CorrelationType: int(appconstant.CorrelationTypeGroup),
+		},
+		Metadata: appdto.TeamNotificationMessageMetadata{
+			IsSentMail: false,
+		},
+	})
+
 	return &appdto.BaseResponse[appdto.GroupResponse]{
 		Data:  groupM,
 		Error: nil,
