@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jackc/pgx/v5 v5.8.0
-	github.com/thanvuc/go-core-lib v1.1.14
+	github.com/thanvuc/go-core-lib v1.1.15
 	github.com/wagslane/go-rabbitmq v0.15.0
 	go.uber.org/zap v1.27.1
 	google.golang.org/grpc v1.79.1
