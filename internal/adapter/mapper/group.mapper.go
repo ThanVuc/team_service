@@ -140,6 +140,16 @@ func ToListMembersRequest(req *team_service.ListMembersRequest) *appdto.ListMemb
 	}
 }
 
+func ToGetSimpleUserByGroupIDRequest(req *common.IDRequest) *appdto.ListMembersRequest {
+	if req == nil {
+		return nil
+	}
+
+	return &appdto.ListMembersRequest{
+		GroupID: req.Id,
+	}
+}
+
 func ToListMembersGrpcResponse(
 	resp *appdto.BaseResponse[appdto.ListMembersResponse],
 ) *team_service.ListMembersResponse {
@@ -226,5 +236,38 @@ func ToRemoveMemberGrpcResponse(
 	return &team_service.RemoveMemberResponse{
 		Success: resp.Data.Success,
 		Error:   ToProtoError(resp.Error),
+	}
+}
+
+func ToGetSimpleUserByGroupIDGrpcResponse(
+	resp *appdto.BaseResponse[[]appdto.SimpleUserResponse],
+) *team_service.GetSimpleUserByGroupIDResponse {
+	if resp == nil {
+		return &team_service.GetSimpleUserByGroupIDResponse{
+			Users: nil,
+			Error: ToProtoError(nil),
+		}
+	}
+
+	users := make([]*team_service.SimpleUserMessage, 0)
+	if resp.Data != nil {
+		users = make([]*team_service.SimpleUserMessage, 0, len(*resp.Data))
+		for _, user := range *resp.Data {
+			avatar := ""
+			if user.AvatarURL != nil {
+				avatar = *user.AvatarURL
+			}
+
+			users = append(users, &team_service.SimpleUserMessage{
+				Id:     user.ID,
+				Email:  user.Email,
+				Avatar: &avatar,
+			})
+		}
+	}
+
+	return &team_service.GetSimpleUserByGroupIDResponse{
+		Users: users,
+		Error: ToProtoError(resp.Error),
 	}
 }

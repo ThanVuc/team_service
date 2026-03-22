@@ -119,17 +119,6 @@ func (uc *sprintUseCase) GetSprint(ctx context.Context, req *appdto.GetSprintReq
 		}, nil
 	}
 
-	if err != nil {
-		return &appdto.BaseResponse[appdto.SprintResponse]{
-			Data: nil,
-			Error: &appdto.ErrorResponse{
-				Code:    err.ErrorInfo().Code,
-				Message: err.ErrorInfo().Title,
-				Detail:  err.ErrorInfo().Detail,
-			},
-		}, nil
-	}
-
 	return &appdto.BaseResponse[appdto.SprintResponse]{
 		Data:  appmapper.ToSprintResponse(sprint),
 		Error: nil,
@@ -188,6 +177,67 @@ func (uc *sprintUseCase) ListSprints(ctx context.Context, req *appdto.ListSprint
 			Sprints: sprintResponses,
 			Total:   int32(len(sprintResponses)),
 		},
+		Error: nil,
+	}, nil
+}
+
+func (uc *sprintUseCase) GetSimpleSprints(ctx context.Context, req *appdto.ListSprintsRequest) (*appdto.BaseResponse[[]appdto.SimpleSprintResponse], errorbase.AppError) {
+	_, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleViewer)
+	if err != nil {
+		return &appdto.BaseResponse[[]appdto.SimpleSprintResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	groupID, err := uc.validator.ValidateListSprints(ctx, req)
+	if err != nil {
+		return &appdto.BaseResponse[[]appdto.SimpleSprintResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	sprints, err := uc.sprintRepo.GetSimpleSprintsByGroupID(ctx, groupID)
+	if err != nil {
+		return &appdto.BaseResponse[[]appdto.SimpleSprintResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	result := make([]appdto.SimpleSprintResponse, 0, len(sprints))
+	for _, sprint := range sprints {
+		if sprint == nil {
+			continue
+		}
+
+		status := enum.SprintStatus("")
+		if sprint.Status != nil {
+			status = *sprint.Status
+		}
+
+		result = append(result, appdto.SimpleSprintResponse{
+			ID:     sprint.ID,
+			Name:   sprint.Name,
+			Status: status,
+		})
+	}
+
+	return &appdto.BaseResponse[[]appdto.SimpleSprintResponse]{
+		Data:  &result,
 		Error: nil,
 	}, nil
 }

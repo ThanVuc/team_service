@@ -88,6 +88,17 @@ func (c *GroupController) ListMembers(ctx context.Context, req *team_service.Lis
 	return adapermapper.ToListMembersGrpcResponse(resp), nil
 }
 
+func (c *GroupController) GetSimpleUserByGroupID(ctx context.Context, req *common.IDRequest) (*team_service.GetSimpleUserByGroupIDResponse, error) {
+	getSimpleUsersReq := adapermapper.ToGetSimpleUserByGroupIDRequest(req)
+
+	resp, err := utils.WithSafePanic(ctx, c.logger, getSimpleUsersReq, c.groupUseCase.GetSimpleUserByGroupID)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapermapper.ToGetSimpleUserByGroupIDGrpcResponse(resp), nil
+}
+
 func (c *GroupController) UpdateMemberRole(ctx context.Context, req *team_service.UpdateMemberRoleRequest) (*team_service.UpdateMemberRoleResponse, error) {
 	updateMemberRoleReq := adapermapper.ToUpdateMemberRoleRequest(req)
 

@@ -60,6 +60,17 @@ func (c *SprintController) ListSprints(ctx context.Context, req *team_service.Li
 	return adapermapper.ToListSprintsGrpcResponse(resp), nil
 }
 
+func (c *SprintController) GetSimpleSprints(ctx context.Context, req *common.IDRequest) (*team_service.GetSimpleSprintsResponse, error) {
+	getSimpleSprintsReq := adapermapper.ToGetSimpleSprintsDTO(req)
+
+	resp, err := utils.WithSafePanic(ctx, c.logger, getSimpleSprintsReq, c.sprintUseCase.GetSimpleSprints)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapermapper.ToGetSimpleSprintsGrpcResponse(resp), nil
+}
+
 func (c *SprintController) UpdateSprint(ctx context.Context, req *team_service.UpdateSprintRequest) (*team_service.UpdateSprintResponse, error) {
 	updateSprintReq := adapermapper.ToUpdateSprintDTO(req)
 

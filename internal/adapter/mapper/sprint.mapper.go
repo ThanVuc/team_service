@@ -43,6 +43,16 @@ func ToListSprintsDTO(req *team_service.ListSprintsRequest) *appdto.ListSprintsR
 	}
 }
 
+func ToGetSimpleSprintsDTO(req *common.IDRequest) *appdto.ListSprintsRequest {
+	if req == nil {
+		return nil
+	}
+
+	return &appdto.ListSprintsRequest{
+		GroupID: req.Id,
+	}
+}
+
 func ToUpdateSprintDTO(req *team_service.UpdateSprintRequest) *appdto.UpdateSprintRequest {
 	if req == nil {
 		return nil
@@ -132,6 +142,34 @@ func ToListSprintsGrpcResponse(resp *appdto.BaseResponse[appdto.ListSprintsRespo
 	return &team_service.ListSprintsResponse{
 		Sprints: messages,
 		Total:   total,
+		Error:   ToProtoError(resp.Error),
+	}
+}
+
+func ToGetSimpleSprintsGrpcResponse(resp *appdto.BaseResponse[[]appdto.SimpleSprintResponse]) *team_service.GetSimpleSprintsResponse {
+	if resp == nil {
+		return &team_service.GetSimpleSprintsResponse{
+			Sprints: nil,
+			Error:   ToProtoError(nil),
+		}
+	}
+
+	messages := make([]*team_service.SimpleSprintMessage, 0)
+	if resp.Data != nil {
+		messages = make([]*team_service.SimpleSprintMessage, 0, len(*resp.Data))
+		for _, sprint := range *resp.Data {
+			sprintCopy := sprint
+			status := MapSprintStatus(sprintCopy.Status)
+			messages = append(messages, &team_service.SimpleSprintMessage{
+				Id:     sprintCopy.ID,
+				Name:   sprintCopy.Name,
+				Status: &status,
+			})
+		}
+	}
+
+	return &team_service.GetSimpleSprintsResponse{
+		Sprints: messages,
 		Error:   ToProtoError(resp.Error),
 	}
 }

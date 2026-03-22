@@ -53,8 +53,9 @@ type ListWorksResponse struct {
 }
 
 type SimpleSprintDTO struct {
-	ID   string
-	Name string
+	ID     string
+	Name   string
+	Status *enum.SprintStatus
 }
 
 type SimpleUserDTO struct {
