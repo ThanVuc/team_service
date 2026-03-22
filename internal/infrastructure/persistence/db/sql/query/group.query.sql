@@ -131,3 +131,36 @@ FROM group_members gm
 JOIN users u ON gm.user_id = u.id
 WHERE gm.group_id = $1
 AND gm.role IN ('manager', 'member', 'owner');
+
+-- name: GetGroupsByUserID :many
+SELECT 
+    g.id,
+    g.name,
+    gm.role AS my_role,
+    gm_count.member_total,
+    COALESCE(g.avatar_url, '') AS avatar_url,
+    g.created_at,
+    g.updated_at
+FROM groups g
+JOIN group_members gm ON g.id = gm.group_id
+JOIN (
+    SELECT group_id, COUNT(*)::bigint AS member_total
+    FROM group_members
+    GROUP BY group_id
+) gm_count ON gm_count.group_id = g.id
+WHERE gm.user_id = $1
+AND g.deleted_at IS NULL
+ORDER BY g.created_at DESC;
+
+-- name: GetOwnerByGroupID :one
+SELECT
+    u.id AS owner_id,
+    u.email AS owner_email,
+    COALESCE(u.avatar_url, '') AS owner_image
+FROM groups g
+JOIN group_members gm ON gm.group_id = g.id
+    AND gm.role = 'owner'
+    AND gm.user_id = g.owner_id
+JOIN users u ON u.id = g.owner_id
+WHERE g.id = $1
+AND g.deleted_at IS NULL;

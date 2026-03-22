@@ -201,6 +201,92 @@ func (q *Queries) GetGroupByID(ctx context.Context, id pgtype.UUID) (Group, erro
 	return i, err
 }
 
+const getGroupsByUserID = `-- name: GetGroupsByUserID :many
+SELECT 
+    g.id,
+    g.name,
+    gm.role AS my_role,
+    gm_count.member_total,
+    COALESCE(g.avatar_url, '') AS avatar_url,
+    g.created_at,
+    g.updated_at
+FROM groups g
+JOIN group_members gm ON g.id = gm.group_id
+JOIN (
+    SELECT group_id, COUNT(*)::bigint AS member_total
+    FROM group_members
+    GROUP BY group_id
+) gm_count ON gm_count.group_id = g.id
+WHERE gm.user_id = $1
+AND g.deleted_at IS NULL
+ORDER BY g.created_at DESC
+`
+
+type GetGroupsByUserIDRow struct {
+	ID          pgtype.UUID
+	Name        string
+	MyRole      string
+	MemberTotal int64
+	AvatarUrl   string
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) GetGroupsByUserID(ctx context.Context, userID pgtype.UUID) ([]GetGroupsByUserIDRow, error) {
+	rows, err := q.db.Query(ctx, getGroupsByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetGroupsByUserIDRow
+	for rows.Next() {
+		var i GetGroupsByUserIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.MyRole,
+			&i.MemberTotal,
+			&i.AvatarUrl,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getOwnerByGroupID = `-- name: GetOwnerByGroupID :one
+SELECT
+    u.id AS owner_id,
+    u.email AS owner_email,
+    COALESCE(u.avatar_url, '') AS owner_image
+FROM groups g
+JOIN group_members gm ON gm.group_id = g.id
+    AND gm.role = 'owner'
+    AND gm.user_id = g.owner_id
+JOIN users u ON u.id = g.owner_id
+WHERE g.id = $1
+AND g.deleted_at IS NULL
+`
+
+type GetOwnerByGroupIDRow struct {
+	OwnerID    pgtype.UUID
+	OwnerEmail string
+	OwnerImage string
+}
+
+func (q *Queries) GetOwnerByGroupID(ctx context.Context, id pgtype.UUID) (GetOwnerByGroupIDRow, error) {
+	row := q.db.QueryRow(ctx, getOwnerByGroupID, id)
+	var i GetOwnerByGroupIDRow
+	err := row.Scan(&i.OwnerID, &i.OwnerEmail, &i.OwnerImage)
+	return i, err
+}
+
 const getRoleByGroupIDAndUserID = `-- name: GetRoleByGroupIDAndUserID :one
 SELECT role
 FROM group_members

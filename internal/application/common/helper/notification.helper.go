@@ -41,7 +41,16 @@ func NewNotificationHelper(
 func (h *NotificationHelper) PublishTeamNotificationMessage(
 	ctx context.Context,
 	message appdto.TeamNotificationMessage,
+	user *appdto.UserWithPermission,
 ) errorbase.AppError {
+	if user != nil {
+		if !user.HasPushNotification && !user.HasEmailNotification {
+			return nil
+		}
+
+		message.Metadata.IsSentMail = user.HasEmailNotification
+	}
+
 	bytesMessage, err := json.Marshal(message)
 	if err != nil {
 		h.logger.Error("failed to marshal team notification message", log.WithFields(zap.Error(err)))

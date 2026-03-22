@@ -85,6 +85,8 @@ SELECT
     u.email,
     u.status,
     u.created_at,
+    u.has_email_notification,
+    u.has_push_notification,
     gm.group_id,
     gm.role,
     gm.joined_at
@@ -102,13 +104,15 @@ type GetUserWithPermissionByIDParams struct {
 }
 
 type GetUserWithPermissionByIDRow struct {
-	ID        pgtype.UUID
-	Email     string
-	Status    string
-	CreatedAt pgtype.Timestamptz
-	GroupID   pgtype.UUID
-	Role      string
-	JoinedAt  pgtype.Timestamptz
+	ID                   pgtype.UUID
+	Email                string
+	Status               string
+	CreatedAt            pgtype.Timestamptz
+	HasEmailNotification bool
+	HasPushNotification  bool
+	GroupID              pgtype.UUID
+	Role                 string
+	JoinedAt             pgtype.Timestamptz
 }
 
 func (q *Queries) GetUserWithPermissionByID(ctx context.Context, arg GetUserWithPermissionByIDParams) (GetUserWithPermissionByIDRow, error) {
@@ -119,6 +123,8 @@ func (q *Queries) GetUserWithPermissionByID(ctx context.Context, arg GetUserWith
 		&i.Email,
 		&i.Status,
 		&i.CreatedAt,
+		&i.HasEmailNotification,
+		&i.HasPushNotification,
 		&i.GroupID,
 		&i.Role,
 		&i.JoinedAt,

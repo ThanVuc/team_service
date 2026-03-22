@@ -70,6 +70,52 @@ func ToGetGroupRequest(req *common.IDRequest) *appdto.GetGroupRequest {
 	}
 }
 
+func ToListGroupsRequest(req *common.IDRequest) *appdto.ListGroupsRequest {
+	_ = req
+	return &appdto.ListGroupsRequest{}
+}
+
+func ToListGroupsGrpcResponse(
+	resp *appdto.BaseResponse[appdto.ListGroupsResponse],
+) *team_service.ListGroupsResponse {
+	var errResp *appdto.ErrorResponse
+	if resp != nil {
+		errResp = resp.Error
+	}
+
+	if resp == nil || resp.Data == nil {
+		return &team_service.ListGroupsResponse{
+			Groups: nil,
+			Total:  0,
+			Error:  ToProtoError(errResp),
+		}
+	}
+
+	groups := make([]*team_service.GroupMessage, 0, len(resp.Data.Items))
+	for _, item := range resp.Data.Items {
+		groups = append(groups, &team_service.GroupMessage{
+			Id:   item.ID,
+			Name: item.Name,
+			Owner: &team_service.SimpleUserMessage{
+				Id:     item.Owner.ID,
+				Email:  item.Owner.Email,
+				Avatar: item.Owner.Avatar,
+			},
+			MyRole:      MapGroupRole(item.MyRole),
+			MemberCount: int32(item.MemberTotal),
+			Avatar:      item.AvatarURL,
+			CreatedAt:   timestamppb.New(item.CreatedAt),
+			UpdatedAt:   timestamppb.New(item.UpdatedAt),
+		})
+	}
+
+	return &team_service.ListGroupsResponse{
+		Groups: groups,
+		Total:  int32(resp.Data.Total),
+		Error:  ToProtoError(errResp),
+	}
+}
+
 func ToGetGroupGrpcResponse(
 	group *appdto.BaseResponse[appdto.GroupResponse],
 ) *team_service.GetGroupResponse {
