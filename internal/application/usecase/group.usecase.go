@@ -357,6 +357,46 @@ func (uc *groupUseCase) GetListGroupMembers(ctx context.Context, req *appdto.Lis
 	}, nil
 }
 
+func (uc *groupUseCase) GetSimpleUserByGroupID(ctx context.Context, req *appdto.ListMembersRequest) (*appdto.BaseResponse[[]appdto.SimpleUserResponse], errorbase.AppError) {
+	err := uc.validator.ValidateGetListGroupMembers(ctx, req)
+	if err != nil {
+		return &appdto.BaseResponse[[]appdto.SimpleUserResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	users, err := uc.groupRepo.GetSimpleUsersByGroupID(ctx, req.GroupID)
+	if err != nil {
+		return &appdto.BaseResponse[[]appdto.SimpleUserResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	result := make([]appdto.SimpleUserResponse, 0, len(users))
+	for _, user := range users {
+		if user == nil {
+			continue
+		}
+
+		result = append(result, *user)
+	}
+
+	return &appdto.BaseResponse[[]appdto.SimpleUserResponse]{
+		Data:  &result,
+		Error: nil,
+	}, nil
+}
+
 func (uc *groupUseCase) UpdateMemberRole(ctx context.Context, req *appdto.UpdateMemberRoleRequest) (*appdto.BaseResponse[appdto.MemberResponse], errorbase.AppError) {
 	userID := utils.GetUserIDFromOutgoingContext(ctx)
 

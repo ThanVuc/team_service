@@ -74,3 +74,9 @@ type SprintResponse struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+
+type SimpleSprintResponse struct {
+	ID     string
+	Name   string
+	Status enum.SprintStatus
+}

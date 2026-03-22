@@ -125,3 +125,9 @@ SELECT EXISTS (
     AND u.email = $2
 );
 
+-- name: GetSimpleUserByGroupID :many
+SELECT u.id, u.email, u.avatar_url
+FROM group_members gm
+JOIN users u ON gm.user_id = u.id
+WHERE gm.group_id = $1
+AND gm.role IN ('manager', 'member', 'owner');

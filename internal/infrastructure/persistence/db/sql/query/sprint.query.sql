@@ -110,3 +110,8 @@ WITH target_sprint AS (
 )
 DELETE FROM sprints
 WHERE sprints.id IN (SELECT target_sprint.id FROM target_sprint);
+
+-- name: GetSimpleSprintsByGroupID :many
+SELECT id, name, status
+FROM sprints
+WHERE group_id = $1;

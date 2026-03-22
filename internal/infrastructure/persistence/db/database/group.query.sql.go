@@ -220,6 +220,40 @@ func (q *Queries) GetRoleByGroupIDAndUserID(ctx context.Context, arg GetRoleByGr
 	return role, err
 }
 
+const getSimpleUserByGroupID = `-- name: GetSimpleUserByGroupID :many
+SELECT u.id, u.email, u.avatar_url
+FROM group_members gm
+JOIN users u ON gm.user_id = u.id
+WHERE gm.group_id = $1
+AND gm.role IN ('manager', 'member', 'owner')
+`
+
+type GetSimpleUserByGroupIDRow struct {
+	ID        pgtype.UUID
+	Email     string
+	AvatarUrl pgtype.Text
+}
+
+func (q *Queries) GetSimpleUserByGroupID(ctx context.Context, groupID pgtype.UUID) ([]GetSimpleUserByGroupIDRow, error) {
+	rows, err := q.db.Query(ctx, getSimpleUserByGroupID, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSimpleUserByGroupIDRow
+	for rows.Next() {
+		var i GetSimpleUserByGroupIDRow
+		if err := rows.Scan(&i.ID, &i.Email, &i.AvatarUrl); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSprintByGroupID = `-- name: GetSprintByGroupID :one
 SELECT id, group_id, name, goal, start_date, end_date, status, velocity_work, velocity_estimate, work_deleted, created_at, updated_at
 FROM sprints
