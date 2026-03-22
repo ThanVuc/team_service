@@ -28,8 +28,9 @@ type GetWorkPayload struct {
 }
 
 type ListWorksPayload struct {
-	GroupID  string
-	SprintID *string
+	GroupID    string
+	SprintID   *string
+	AssigneeID *string
 }
 
 type UpdateWorkPayload struct {
@@ -191,7 +192,7 @@ func (v *WorkValidator) ValidateCreateWork(
 				return nil, errorbase.New(errdict.ErrUnprocessable, errorbase.WithDetail("cannot create work in cancelled sprint"))
 			}
 
-			works, err := v.workRepo.GetWorksBySprint(ctx, groupID, utils.Ptr(rawSprintID))
+			works, err := v.workRepo.GetWorksBySprint(ctx, groupID, utils.Ptr(rawSprintID), nil)
 			if err != nil {
 				return nil, err
 			}
@@ -254,9 +255,36 @@ func (v *WorkValidator) ValidateListWorks(
 		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("request is required"))
 	}
 
+	if req.AssigneeID != nil {
+		assigneeID := strings.TrimSpace(*req.AssigneeID)
+		if assigneeID == "" {
+			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("assignee id must not be empty when provided"))
+		}
+
+		if _, err := uuid.Parse(assigneeID); err != nil {
+			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("assignee id must be a valid UUID"))
+		}
+
+		assignee, err := v.userRepo.GetUserWithPermissionByID(ctx, actor.GroupId, assigneeID)
+		if err != nil {
+			return nil, err
+		}
+
+		if assignee == nil {
+			return nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("assignee not found in current group"))
+		}
+
+		if assignee.Status != enum.UserStatusActive {
+			return nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("inactive assignee filter is not allowed"))
+		}
+
+		req.AssigneeID = &assigneeID
+	}
+
 	return &ListWorksPayload{
-		GroupID:  actor.GroupId,
-		SprintID: req.SprintID,
+		GroupID:    actor.GroupId,
+		SprintID:   req.SprintID,
+		AssigneeID: req.AssigneeID,
 	}, nil
 }
 
@@ -361,7 +389,7 @@ func (v *WorkValidator) ValidateUpdateWork(
 		}
 
 		if sprintID != currentSprintID {
-			worksInSprint, err := v.workRepo.GetWorksBySprint(ctx, actor.GroupId, utils.Ptr(sprintID))
+			worksInSprint, err := v.workRepo.GetWorksBySprint(ctx, actor.GroupId, utils.Ptr(sprintID), nil)
 			if err != nil {
 				return nil, err
 			}

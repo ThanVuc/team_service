@@ -89,6 +89,7 @@ FROM works w
 LEFT JOIN users u ON u.id = w.assignee_id
 WHERE w.group_id = sqlc.arg('group_id')
 AND w.sprint_id IS NOT DISTINCT FROM sqlc.narg('sprint_id')
+AND w.assignee_id IS NOT DISTINCT FROM sqlc.narg('assignee_id')
 ORDER BY w.updated_at DESC;
 
 -- name: GetWork :one
