@@ -51,3 +51,9 @@ type UserOutboxPayload struct {
 	Fullname  string `json:"name"`
 	AvatarUrl string `json:"avatar_url"`
 }
+
+type SimpleUserResponse struct {
+	ID        string  `json:"id"`
+	Email     string  `json:"email"`
+	AvatarURL *string `json:"avatar_url,omitempty"`
+}

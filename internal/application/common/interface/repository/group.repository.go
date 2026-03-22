@@ -20,4 +20,5 @@ type GroupRepository interface {
 	UpdateMemberRole(ctx context.Context, userID string, groupID string, newRole string) (*appdto.MemberResponse, errorbase.AppError)
 	RemoveMember(ctx context.Context, groupID string, userID string) errorbase.AppError
 	CheckMemberExistsByEmail(ctx context.Context, groupID string, email string) (bool, errorbase.AppError)
+	GetSimpleUsersByGroupID(ctx context.Context, groupID string) ([]*appdto.SimpleUserResponse, errorbase.AppError)
 }

@@ -146,6 +146,38 @@ func (q *Queries) DeleteSprint(ctx context.Context, id pgtype.UUID) (int64, erro
 	return result.RowsAffected(), nil
 }
 
+const getSimpleSprintsByGroupID = `-- name: GetSimpleSprintsByGroupID :many
+SELECT id, name, status
+FROM sprints
+WHERE group_id = $1
+`
+
+type GetSimpleSprintsByGroupIDRow struct {
+	ID     pgtype.UUID
+	Name   string
+	Status string
+}
+
+func (q *Queries) GetSimpleSprintsByGroupID(ctx context.Context, groupID pgtype.UUID) ([]GetSimpleSprintsByGroupIDRow, error) {
+	rows, err := q.db.Query(ctx, getSimpleSprintsByGroupID, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSimpleSprintsByGroupIDRow
+	for rows.Next() {
+		var i GetSimpleSprintsByGroupIDRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.Status); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSprintByID = `-- name: GetSprintByID :one
 SELECT id, group_id, name, goal, start_date, end_date, status, velocity_work, velocity_estimate, work_deleted, created_at, updated_at
 FROM sprints

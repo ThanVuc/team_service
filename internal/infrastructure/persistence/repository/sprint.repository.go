@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	appdto "team_service/internal/application/common/dto"
 	errorbase "team_service/internal/domain/common/apperror"
 	errdict "team_service/internal/domain/common/apperror/err"
 	"team_service/internal/domain/entity"
@@ -437,6 +438,35 @@ func (r *SprintRepository) GetSprintsByGroupID(
 			VelocityWork:     utils.Ptr(int32(sprint.VelocityWork.Int32)),
 			VelocityEstimate: utils.Ptr(float64(sprint.VelocityEstimate.Float64)),
 			WorkDeleted:      utils.Ptr(int32(sprint.WorkDeleted.Int32)),
+		})
+	}
+
+	return result, nil
+}
+
+func (r *SprintRepository) GetSimpleSprintsByGroupID(
+	ctx context.Context,
+	groupID string,
+) ([]*appdto.SimpleSprintDTO, errorbase.AppError) {
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return nil, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	sprints, err := r.q.GetSimpleSprintsByGroupID(ctx, groupUUID)
+	if err != nil {
+		return nil, errorbase.Wrap(err, errdict.ErrInternal)
+	}
+
+	var result []*appdto.SimpleSprintDTO
+	for _, sprint := range sprints {
+		result = append(result, &appdto.SimpleSprintDTO{
+			ID:     sprint.ID.String(),
+			Name:   sprint.Name,
+			Status: utils.Ptr(enum.SprintStatus(sprint.Status)),
 		})
 	}
 

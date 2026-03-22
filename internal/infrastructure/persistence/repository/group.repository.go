@@ -476,3 +476,36 @@ func (r *GroupRepository) CheckMemberExistsByEmail(
 
 	return exists, nil
 }
+
+func (r *GroupRepository) GetSimpleUsersByGroupID(
+	ctx context.Context,
+	groupID string,
+) ([]*appdto.SimpleUserResponse, errorbase.AppError) {
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return nil, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	rows, err := r.q.GetSimpleUserByGroupID(ctx, groupUUID)
+	if err != nil {
+		return nil, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to get simple users for group=%s", groupID)),
+		)
+	}
+
+	var users []*appdto.SimpleUserResponse
+	for _, row := range rows {
+		users = append(users, &appdto.SimpleUserResponse{
+			ID:        row.ID.String(),
+			Email:     row.Email,
+			AvatarURL: utils.Ptr(row.AvatarUrl.String),
+		})
+	}
+
+	return users, nil
+}
