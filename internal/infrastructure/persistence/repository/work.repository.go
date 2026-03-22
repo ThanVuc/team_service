@@ -167,6 +167,7 @@ func (r *WorkRepository) GetWorksBySprint(
 	ctx context.Context,
 	groupID string,
 	sprintID *string,
+	assigneeID *string,
 ) ([]appdto.WorkResponse, errorbase.AppError) {
 	groupUUID, appErr := parseUUID(groupID, "group id")
 	if appErr != nil {
@@ -181,9 +182,18 @@ func (r *WorkRepository) GetWorksBySprint(
 		)
 	}
 
+	pgAssigneeID, err := utils.StringPtrToPgUUID(assigneeID)
+	if err != nil {
+		return nil, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to parse assignee id=%s", utils.SafeString(assigneeID))),
+		)
+	}
+
 	rows, err := r.q.GetWorksBySprint(ctx, database.GetWorksBySprintParams{
-		GroupID:  groupUUID,
-		SprintID: pgSprintID,
+		GroupID:    groupUUID,
+		SprintID:   pgSprintID,
+		AssigneeID: pgAssigneeID,
 	})
 	if err != nil {
 		return nil, errorbase.Wrap(

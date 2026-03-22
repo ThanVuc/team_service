@@ -501,12 +501,14 @@ FROM works w
 LEFT JOIN users u ON u.id = w.assignee_id
 WHERE w.group_id = $1
 AND w.sprint_id IS NOT DISTINCT FROM $2
+AND w.assignee_id IS NOT DISTINCT FROM $3
 ORDER BY w.updated_at DESC
 `
 
 type GetWorksBySprintParams struct {
-	GroupID  pgtype.UUID
-	SprintID pgtype.UUID
+	GroupID    pgtype.UUID
+	SprintID   pgtype.UUID
+	AssigneeID pgtype.UUID
 }
 
 type GetWorksBySprintRow struct {
@@ -529,7 +531,7 @@ type GetWorksBySprintRow struct {
 }
 
 func (q *Queries) GetWorksBySprint(ctx context.Context, arg GetWorksBySprintParams) ([]GetWorksBySprintRow, error) {
-	rows, err := q.db.Query(ctx, getWorksBySprint, arg.GroupID, arg.SprintID)
+	rows, err := q.db.Query(ctx, getWorksBySprint, arg.GroupID, arg.SprintID, arg.AssigneeID)
 	if err != nil {
 		return nil, err
 	}

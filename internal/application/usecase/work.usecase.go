@@ -118,7 +118,7 @@ func (uc *workUseCase) ListWorks(ctx context.Context, req *appdto.ListWorksReque
 		}, nil
 	}
 
-	works, err := uc.workRepo.GetWorksBySprint(ctx, payload.GroupID, payload.SprintID)
+	works, err := uc.workRepo.GetWorksBySprint(ctx, payload.GroupID, payload.SprintID, payload.AssigneeID)
 	if err != nil {
 		return &appdto.BaseResponse[appdto.ListWorksResponse]{
 			Data:  nil,

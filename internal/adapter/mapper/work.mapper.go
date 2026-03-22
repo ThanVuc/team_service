@@ -40,7 +40,8 @@ func ToListWorksDTO(req *team_service.ListWorksRequest) *appdto.ListWorksRequest
 	}
 
 	return &appdto.ListWorksRequest{
-		SprintID: req.SprintId,
+		SprintID:   req.SprintId,
+		AssigneeID: req.AssigneeId,
 	}
 }
 
