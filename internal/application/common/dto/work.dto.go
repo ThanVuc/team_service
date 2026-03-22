@@ -16,7 +16,8 @@ type GetWorkRequest struct {
 }
 
 type ListWorksRequest struct {
-	SprintID *string
+	SprintID   *string
+	AssigneeID *string
 }
 
 type UpdateWorkRequest struct {
