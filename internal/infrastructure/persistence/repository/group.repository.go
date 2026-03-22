@@ -151,6 +151,65 @@ func (r *GroupRepository) AddGroupMember(
 	return nil
 }
 
+func (r *GroupRepository) GetGroupsByUserID(
+	ctx context.Context,
+	userID string,
+) (*appdto.ListGroupsResponse, errorbase.AppError) {
+	var userUUID pgtype.UUID
+	if err := userUUID.Scan(userID); err != nil {
+		return nil, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse user id"),
+		)
+	}
+
+	rows, err := r.q.GetGroupsByUserID(ctx, userUUID)
+	if err != nil {
+		return nil, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to list groups for user=%s", userID)),
+		)
+	}
+
+	items := make([]appdto.ListGroupItem, 0, len(rows))
+	for _, row := range rows {
+		owner, err := r.q.GetOwnerByGroupID(ctx, row.ID)
+		if err != nil {
+			return nil, errorbase.Wrap(
+				err,
+				errdict.ErrInternal,
+				errorbase.WithDetail(fmt.Sprintf("failed to get owner for group=%s", row.ID.String())),
+			)
+		}
+
+		var ownerAvatar *string
+		if owner.OwnerImage != "" {
+			ownerAvatar = utils.Ptr(owner.OwnerImage)
+		}
+
+		items = append(items, appdto.ListGroupItem{
+			ID:   row.ID.String(),
+			Name: row.Name,
+			Owner: appdto.OwnerDTO{
+				ID:     owner.OwnerID.String(),
+				Email:  owner.OwnerEmail,
+				Avatar: ownerAvatar,
+			},
+			MyRole:      enum.GroupRole(row.MyRole),
+			MemberTotal: int(row.MemberTotal),
+			AvatarURL:   row.AvatarUrl,
+			CreatedAt:   row.CreatedAt.Time,
+			UpdatedAt:   row.UpdatedAt.Time,
+		})
+	}
+
+	return &appdto.ListGroupsResponse{
+		Items: items,
+		Total: len(items),
+	}, nil
+}
+
 func (r *GroupRepository) GetGroupByID(
 	ctx context.Context,
 	groupID string,

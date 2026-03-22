@@ -25,6 +25,24 @@ type GetGroupRequest struct {
 	GroupID string
 }
 
+type ListGroupsRequest struct{}
+
+type ListGroupItem struct {
+	ID          string
+	Name        string
+	Owner       OwnerDTO
+	MyRole      enum.GroupRole
+	MemberTotal int
+	AvatarURL   string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type ListGroupsResponse struct {
+	Items []ListGroupItem
+	Total int
+}
+
 type GroupResponse struct {
 	ID          string
 	Name        string

@@ -98,12 +98,14 @@ func (r *UserRepository) GetUserWithPermissionByID(
 	}
 
 	return &appdto.UserWithPermission{
-		ID:       user.ID.String(),
-		Email:    user.Email,
-		Status:   enum.UserStatus(user.Status),
-		Role:     enum.GroupRole(user.Role),
-		GroupId:  groupId,
-		JoinedAt: user.JoinedAt.Time,
+		ID:                   user.ID.String(),
+		Email:                user.Email,
+		Status:               enum.UserStatus(user.Status),
+		Role:                 enum.GroupRole(user.Role),
+		GroupId:              groupId,
+		JoinedAt:             user.JoinedAt.Time,
+		HasEmailNotification: user.HasEmailNotification,
+		HasPushNotification:  user.HasPushNotification,
 	}, nil
 }
 

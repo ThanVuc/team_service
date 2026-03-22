@@ -9,6 +9,8 @@ SELECT
     u.email,
     u.status,
     u.created_at,
+    u.has_email_notification,
+    u.has_push_notification,
     gm.group_id,
     gm.role,
     gm.joined_at
