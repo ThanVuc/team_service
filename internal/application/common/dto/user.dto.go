@@ -36,12 +36,14 @@ type ConfigureNotificationResponse struct {
 }
 
 type UserWithPermission struct {
-	ID       string
-	GroupId  string
-	Email    string
-	Status   enum.UserStatus
-	Role     enum.GroupRole
-	JoinedAt time.Time
+	ID                   string
+	GroupId              string
+	Email                string
+	Status               enum.UserStatus
+	Role                 enum.GroupRole
+	JoinedAt             time.Time
+	HasEmailNotification bool
+	HasPushNotification  bool
 }
 
 type UserOutboxPayload struct {

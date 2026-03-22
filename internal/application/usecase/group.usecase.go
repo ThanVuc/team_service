@@ -104,6 +104,10 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroup
 		Metadata: appdto.TeamNotificationMessageMetadata{
 			IsSentMail: false,
 		},
+	}, &appdto.UserWithPermission{
+		ID:                   user.ID,
+		HasEmailNotification: user.HasEmailNotification,
+		HasPushNotification:  user.HasPushNotification,
 	})
 
 	return &appdto.BaseResponse[appdto.GroupResponse]{
@@ -130,6 +134,35 @@ func MapRoleToString(role string) enum.GroupRole {
 	default:
 		return enum.GroupRoleOwner
 	}
+}
+
+func (uc *groupUseCase) ListGroups(ctx context.Context, req *appdto.ListGroupsRequest) (*appdto.BaseResponse[appdto.ListGroupsResponse], errorbase.AppError) {
+	_ = req
+
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
+	groups, err := uc.groupRepo.GetGroupsByUserID(ctx, userID)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.ListGroupsResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	if groups == nil {
+		groups = &appdto.ListGroupsResponse{
+			Items: []appdto.ListGroupItem{},
+			Total: 0,
+		}
+	}
+
+	return &appdto.BaseResponse[appdto.ListGroupsResponse]{
+		Data:  groups,
+		Error: nil,
+	}, nil
 }
 
 func (uc *groupUseCase) GetGroupRequest(ctx context.Context, req *appdto.GetGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError) {
