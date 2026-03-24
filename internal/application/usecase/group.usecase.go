@@ -102,7 +102,8 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroup
 			CorrelationType: int(appconstant.CorrelationTypeGroup),
 		},
 		Metadata: appdto.TeamNotificationMessageMetadata{
-			IsSentMail: false,
+			IsSentMail:           false,
+			NonExistentReceivers: []string{},
 		},
 	}, &appdto.UserWithPermission{
 		ID:                   user.ID,
