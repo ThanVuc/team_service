@@ -2,6 +2,7 @@ package apphelper
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
@@ -47,12 +48,17 @@ func (h *AuthHelper) RequireRole(ctx context.Context, expectedRole enum.GroupRol
 	}
 
 	var cachedUser appdto.UserWithPermission
-	if err := h.cacheRepo.Get(ctx, key, &cachedUser); err == nil {
-		if !cachedUser.Role.HasPermission(expectedRole) {
-			return nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("User does not have permission!"))
-		}
+	var cachedUserBytes []byte
+	if err := h.cacheRepo.Get(ctx, key, &cachedUserBytes); err == nil {
+		if unmarshalErr := json.Unmarshal(cachedUserBytes, &cachedUser); unmarshalErr == nil {
+			if !cachedUser.Role.HasPermission(expectedRole) {
+				return nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("User does not have permission!"))
+			}
 
-		return &cachedUser, nil
+			return &cachedUser, nil
+		} else {
+			h.logger.Error(fmt.Sprintf("Failed to unmarshal cached user role for user %s: %v", userID, unmarshalErr))
+		}
 	}
 
 	user, err := h.userRepo.GetUserWithPermissionByID(ctx, groupId, userID)
@@ -60,7 +66,10 @@ func (h *AuthHelper) RequireRole(ctx context.Context, expectedRole enum.GroupRol
 		return nil, err
 	}
 
-	if cacheErr := h.cacheRepo.Set(ctx, key, user, 800); cacheErr != nil {
+	userBytes, marshalErr := json.Marshal(user)
+	if marshalErr != nil {
+		h.logger.Error(fmt.Sprintf("Failed to marshal user role for cache for user %s: %v", userID, marshalErr))
+	} else if cacheErr := h.cacheRepo.Set(ctx, key, userBytes, 800); cacheErr != nil {
 		h.logger.Error(fmt.Sprintf("Failed to set user role in cache for user %s: %v", userID, cacheErr))
 	}
 
