@@ -87,6 +87,19 @@ func (q *Queries) CountManagerAndMemberByGroupID(ctx context.Context, groupID pg
 	return count, err
 }
 
+const countViewerByGroupID = `-- name: CountViewerByGroupID :one
+SELECT COUNT(*)
+FROM group_members
+WHERE group_id = $1 AND role = 'viewer'
+`
+
+func (q *Queries) CountViewerByGroupID(ctx context.Context, groupID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countViewerByGroupID, groupID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createGroup = `-- name: CreateGroup :one
 INSERT INTO groups (
     id,
@@ -253,6 +266,32 @@ func (q *Queries) GetGroupsByUserID(ctx context.Context, userID pgtype.UUID) ([]
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getListUserIDByGroupID = `-- name: GetListUserIDByGroupID :many
+SELECT user_id
+FROM group_members
+WHERE group_id = $1
+`
+
+func (q *Queries) GetListUserIDByGroupID(ctx context.Context, groupID pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, getListUserIDByGroupID, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var user_id pgtype.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

@@ -8,4 +8,5 @@ import (
 
 type InviteRepository interface {
 	CreateInvite(ctx context.Context, invite *entity.Invite) (*entity.Invite, errorbase.AppError)
+	GetInviteByToken(ctx context.Context, token string) (*entity.Invite, errorbase.AppError)
 }

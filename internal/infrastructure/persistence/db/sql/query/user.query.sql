@@ -61,3 +61,20 @@ JOIN users u ON gm.user_id = u.id
 WHERE gm.group_id = $1
 ORDER BY gm.joined_at;
 
+
+-- name: GetUserByEmail :one
+SELECT *
+FROM users
+WHERE email = $1;
+
+
+-- name: UpdateUserNotificationSettings :one
+WITH updated AS (
+    UPDATE users
+    SET
+        has_email_notification = $2,
+        has_push_notification = $3
+    WHERE id = $1
+    RETURNING 1
+)
+SELECT EXISTS (SELECT 1 FROM updated);

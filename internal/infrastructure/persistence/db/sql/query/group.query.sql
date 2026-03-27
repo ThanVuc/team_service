@@ -164,3 +164,13 @@ JOIN group_members gm ON gm.group_id = g.id
 JOIN users u ON u.id = g.owner_id
 WHERE g.id = $1
 AND g.deleted_at IS NULL;
+-- name: CountViewerByGroupID :one
+SELECT COUNT(*)
+FROM group_members
+WHERE group_id = $1 AND role = 'viewer';
+
+
+-- name: GetListUserIDByGroupID :many
+SELECT user_id
+FROM group_members
+WHERE group_id = $1;

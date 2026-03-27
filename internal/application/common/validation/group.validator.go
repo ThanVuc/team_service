@@ -15,17 +15,20 @@ import (
 )
 
 type GroupValidator struct {
-	groupRepo irepository.GroupRepository
-	userRepo  irepository.UserRepository
+	groupRepo  irepository.GroupRepository
+	userRepo   irepository.UserRepository
+	inviteRepo irepository.InviteRepository
 }
 
 func NewGroupValidator(
 	groupRepo irepository.GroupRepository,
 	userRepo irepository.UserRepository,
+	inviteRepo irepository.InviteRepository,
 ) *GroupValidator {
 	return &GroupValidator{
-		groupRepo: groupRepo,
-		userRepo:  userRepo,
+		groupRepo:  groupRepo,
+		userRepo:   userRepo,
+		inviteRepo: inviteRepo,
 	}
 }
 
@@ -68,19 +71,15 @@ func (v *GroupValidator) ValidateCreateGroup(ctx context.Context, req *appdto.Cr
 	return group, user, nil
 }
 
-func (v *GroupValidator) ValidateUpdateGroup(ctx context.Context, req *appdto.UpdateGroupRequest) (*entity.Group, errorbase.AppError) {
-	userID := utils.GetUserIDFromOutgoingContext(ctx)
+// Note: validator signatures below now accept actor to avoid fetching roles from DB inside validators.
+func (v *GroupValidator) ValidateUpdateGroup(ctx context.Context, req *appdto.UpdateGroupRequest, actor *appdto.UserWithPermission) (*entity.Group, errorbase.AppError) {
+	userID := ""
+	if actor != nil {
+		userID = actor.ID
+	}
+
 	if req.GroupID == "" {
 		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required"))
-	}
-
-	role, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, userID, req.GroupID)
-	if err != nil {
-		return nil, err
-	}
-
-	if role != string(enum.GroupRoleOwner) && role != string(enum.GroupRoleManager) {
-		return nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user does not have permission to update the group"))
 	}
 
 	groupExists, err := v.groupRepo.CheckGroupExists(ctx, req.GroupID)
@@ -90,6 +89,11 @@ func (v *GroupValidator) ValidateUpdateGroup(ctx context.Context, req *appdto.Up
 
 	if !groupExists {
 		return nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("group not found"))
+	}
+
+	if !(actor.Role == enum.GroupRoleOwner || actor.Role == enum.GroupRoleManager) {
+		forbidden := errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user does not have permission to update the group"))
+		return nil, forbidden
 	}
 
 	name := ""
@@ -118,20 +122,9 @@ func (v *GroupValidator) ValidateUpdateGroup(ctx context.Context, req *appdto.Up
 	return group, nil
 }
 
-func (v *GroupValidator) ValidateDeleteGroup(ctx context.Context, req *appdto.DeleteGroupRequest) errorbase.AppError {
-	userID := utils.GetUserIDFromOutgoingContext(ctx)
-
+func (v *GroupValidator) ValidateDeleteGroup(ctx context.Context, req *appdto.DeleteGroupRequest, actor *appdto.UserWithPermission) errorbase.AppError {
 	if req.GroupID == "" {
 		return errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required"))
-	}
-
-	role, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, userID, req.GroupID)
-	if err != nil {
-		return err
-	}
-
-	if role != string(enum.GroupRoleOwner) {
-		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user does not have permission to delete the group"))
 	}
 
 	groupExists, err := v.groupRepo.CheckGroupExists(ctx, req.GroupID)
@@ -146,9 +139,9 @@ func (v *GroupValidator) ValidateDeleteGroup(ctx context.Context, req *appdto.De
 	return nil
 }
 
-func (v *GroupValidator) ValidateGetListGroupMembers(ctx context.Context, req *appdto.ListMembersRequest) errorbase.AppError {
-	userID := utils.GetUserIDFromOutgoingContext(ctx)
-	if userID == "" {
+func (v *GroupValidator) ValidateGetListGroupMembers(ctx context.Context, req *appdto.ListMembersRequest, actor *appdto.UserWithPermission) errorbase.AppError {
+	// Use actor to determine requester identity and group association.
+	if actor == nil || actor.ID == "" {
 		return errorbase.New(errdict.ErrUnauthorized, errorbase.WithDetail("missing user context"))
 	}
 
@@ -165,146 +158,140 @@ func (v *GroupValidator) ValidateGetListGroupMembers(ctx context.Context, req *a
 		return errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("group is not found"))
 	}
 
-	role, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, userID, req.GroupID)
-	if err != nil {
-		return err
-	}
-
-	if role == "" {
+	// Ensure the actor is operating within the same group
+	if actor.GroupId != req.GroupID {
 		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user is not a member of the group"))
 	}
 
 	return nil
 }
 
-func (v *GroupValidator) ValidateUpdateMemberRole(ctx context.Context, req *appdto.UpdateMemberRoleRequest) errorbase.AppError {
-	userID := utils.GetUserIDFromOutgoingContext(ctx)
-	if userID == "" {
-		return errorbase.New(errdict.ErrUnauthorized, errorbase.WithDetail("missing user context"))
+func (v *GroupValidator) ValidateUpdateMemberRole(ctx context.Context, req *appdto.UpdateMemberRoleRequest, actor *appdto.UserWithPermission) (*entity.User, errorbase.AppError) {
+	// Validate request fields and group existence. Role checks and permission enforcement moved to usecase.
+	if actor == nil || actor.ID == "" {
+		return nil, errorbase.New(errdict.ErrUnauthorized, errorbase.WithDetail("missing user context"))
 	}
 
 	if req.GroupID == "" {
-		return errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required"))
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required"))
 	}
 
 	checkGroupExist, err := v.groupRepo.CheckGroupExists(ctx, req.GroupID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !checkGroupExist {
-		return errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("group is not found"))
+		return nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("group is not found"))
 	}
 
-	myRole, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, userID, req.GroupID)
-	if err != nil {
-		return err
+	if req.MemberId == "" {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("member id is required"))
 	}
 
-	if myRole == "" {
-		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user is not a member of the group"))
+	if actor.Role != enum.GroupRoleOwner && actor.Role != enum.GroupRoleManager {
+		forbidden := errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user does not have permission to update member role"))
+		return nil, forbidden
 	}
 
-	if myRole != string(enum.GroupRoleOwner) && myRole != string(enum.GroupRoleManager) {
-		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user does not have permission to update member role"))
-	}
-
-	if myRole == string(enum.GroupRoleManager) && req.Role == enum.GroupRoleOwner {
-		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("manager cannot assign owner role"))
+	if actor.ID == req.MemberId {
+		forbidden := errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("cannot update own role"))
+		return nil, forbidden
 	}
 
 	memberRole, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, req.MemberId, req.GroupID)
-
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if memberRole == "" {
-		return errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("member is not found in the group"))
+		notFound := errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("member is not found in the group"))
+		return nil, notFound
 	}
 
 	if memberRole == string(enum.GroupRoleOwner) {
-		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("cannot update owner role"))
+		forbidden := errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("cannot update owner role"))
+		return nil, forbidden
 	}
 
-	if userID == req.MemberId {
-		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("cannot update own role"))
+	// Manager cannot assign owner role
+	if actor.Role == enum.GroupRoleManager && req.Role == enum.GroupRoleOwner {
+		forbidden := errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("manager cannot assign owner role"))
+		return nil, forbidden
 	}
 
+	// count constraint when promoting from viewer to manager/member
 	count, err := v.groupRepo.CountManagerAndMemberByGroupID(ctx, req.GroupID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if memberRole == string(enum.GroupRoleViewer) {
 		if count >= 9 {
-			return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("group has reached the maximum number of members"))
+			forbidden := errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("the group has reached maximum number of managers and members"))
+			return nil, forbidden
 		}
 	}
 
-	return nil
+	member, err := v.userRepo.GetUserByID(ctx, req.MemberId)
+	if err != nil {
+		return nil, err
+	}
 
+	return member, nil
 }
 
-func (v *GroupValidator) ValidateRemoveMember(ctx context.Context, req *appdto.RemoveMemberRequest) errorbase.AppError {
-	userID := utils.GetUserIDFromOutgoingContext(ctx)
-	if userID == "" {
-		return errorbase.New(errdict.ErrUnauthorized, errorbase.WithDetail("missing user context"))
+func (v *GroupValidator) ValidateRemoveMember(ctx context.Context, req *appdto.RemoveMemberRequest, actor *appdto.UserWithPermission) (*entity.User, errorbase.AppError) {
+	if actor == nil || actor.ID == "" {
+		return nil, errorbase.New(errdict.ErrUnauthorized, errorbase.WithDetail("missing user context"))
 	}
 
 	if req.GroupID == "" {
-		return errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required"))
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required"))
 	}
 
 	checkGroupExist, err := v.groupRepo.CheckGroupExists(ctx, req.GroupID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !checkGroupExist {
-		return errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("group is not found"))
+		return nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("group is not found"))
 	}
 
-	myRole, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, userID, req.GroupID)
-	if err != nil {
-		return err
+	if req.MemberId == "" {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("member id is required"))
 	}
 
-	if myRole == "" {
-		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user is not a member of the group"))
-	}
-
-	if myRole != string(enum.GroupRoleOwner) && myRole != string(enum.GroupRoleManager) {
-		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user does not have permission to remove member"))
+	if actor.ID == req.MemberId {
+		forbidden := errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("cannot remove own membership"))
+		return nil, forbidden
 	}
 
 	memberRole, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, req.MemberId, req.GroupID)
-
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if memberRole == "" {
-		return errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("member is not found in the group"))
+		notFound := errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("member is not found in the group"))
+		return nil, notFound
 	}
 
 	if memberRole == string(enum.GroupRoleOwner) {
-		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("cannot remove owner"))
+		forbidden := errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("cannot remove owner"))
+		return nil, forbidden
+	}
+	member, err := v.userRepo.GetUserByID(ctx, req.MemberId)
+	if err != nil {
+		return nil, err
 	}
 
-	if userID == req.MemberId {
-		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("cannot remove self"))
-	}
-
-	if myRole == string(enum.GroupRoleManager) && memberRole == string(enum.GroupRoleOwner) {
-		return errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("manager cannot remove owner"))
-	}
-	return nil
+	return member, nil
 }
 
-func (v *GroupValidator) ValidateCreateInvitation(ctx context.Context, req *appdto.CreateInviteRequest) (*entity.Invite, errorbase.AppError) {
-	userID := utils.GetUserIDFromOutgoingContext(ctx)
-	if userID == "" {
+func (v *GroupValidator) ValidateCreateInvitation(ctx context.Context, req *appdto.CreateInviteRequest, actor *appdto.UserWithPermission) (*entity.Invite, errorbase.AppError) {
+	if actor == nil || actor.ID == "" {
 		return nil, errorbase.New(errdict.ErrUnauthorized, errorbase.WithDetail("missing user context"))
 	}
 
@@ -327,62 +314,125 @@ func (v *GroupValidator) ValidateCreateInvitation(ctx context.Context, req *appd
 	}
 
 	if countMember >= 9 {
-		return nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("group has reached the maximum number of members"))
+		return nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("the group has reached maximum number of managers and members"))
 	}
 
 	if req.Email != nil {
-		exist, err := v.groupRepo.CheckMemberExistsByEmail(ctx, req.GroupID, *req.Email)
-		if err != nil {
-			return nil, err
-		}
-
-		if exist {
-			return nil, errorbase.New(
-				errdict.ErrForbidden,
-				errorbase.WithDetail("user with the email is already a member of the group"),
-			)
+		if actor.Email == *req.Email {
+			forbidden := errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("cannot invite oneself"))
+			return nil, forbidden
 		}
 	}
 
-	myRole, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, userID, req.GroupID)
-	if err != nil {
-		return nil, err
-	}
-
-	if myRole == "" {
-		return nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user is not a member of the group"))
-	}
-
-	if myRole != string(enum.GroupRoleOwner) && myRole != string(enum.GroupRoleManager) {
-		return nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user does not have permission to create invitation"))
-	}
-
-	if myRole == string(enum.GroupRoleManager) {
-		if req.Role == enum.GroupRoleOwner || req.Role == enum.GroupRoleManager {
-			return nil, errorbase.New(
-				errdict.ErrForbidden,
-				errorbase.WithDetail("manager cannot assign owner or manager role"),
-			)
+	// enforce business rules: Manager can only invite Member or Viewer; only Owner can invite Manager
+	if actor.Role == enum.GroupRoleManager {
+		if req.Role.String() == string(enum.GroupRoleOwner) || req.Role.String() == string(enum.GroupRoleManager) {
+			forbidden := errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("manager cannot assign owner or manager role"))
+			return nil, forbidden
 		}
 	}
 
-	if req.Role == enum.GroupRoleOwner {
-		return nil, errorbase.New(
-			errdict.ErrForbidden,
-			errorbase.WithDetail("cannot assign owner role"),
-		)
+	if req.Role.String() == string(enum.GroupRoleOwner) {
+		forbidden := errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("cannot assign owner role"))
+		return nil, forbidden
+	}
+	var email *string
+	if req.Email != nil {
+		email = req.Email
 	}
 
+	// Business permission checks (who can invite which role) moved to usecase.
 	newInvite, err := entity.NewInvite(
 		uuid.NewString(),
 		req.GroupID,
 		uuid.NewString(),
 		req.Role,
-		req.Email,
+		email,
 		time.Now().Add(7*24*time.Hour),
-		userID,
+		actor.ID,
 		time.Now(),
 	)
 
 	return newInvite, err
+}
+
+func (v *GroupValidator) ValidateAcceptInvitation(ctx context.Context, req *appdto.AcceptInviteRequest) (*entity.Invite, *entity.User, errorbase.AppError) {
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
+	if userID == "" {
+		return nil, nil, errorbase.New(errdict.ErrUnauthorized, errorbase.WithDetail("missing user context"))
+	}
+
+	if req.Code == "" {
+		return nil, nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("code is required"))
+	}
+
+	invite, err := v.inviteRepo.GetInviteByToken(ctx, req.Code)
+	if err != nil {
+		return nil, nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("invite not found"))
+	}
+
+	if invite == nil {
+		return nil, nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("invite not found"))
+	}
+
+	var user *entity.User
+	if invite.Email != nil {
+		user, err = v.userRepo.GetUserByEmail(ctx, *invite.Email)
+		if err != nil {
+			return nil, nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("user not found with the email associated with the invite"))
+		}
+	} else {
+		user, err = v.userRepo.GetUserByID(ctx, userID)
+		if err != nil {
+			return nil, nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("user not found"))
+		}
+	}
+
+	if user == nil {
+		return nil, nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("user not found"))
+	}
+
+	if time.Now().UTC().After(invite.ExpiresAt) {
+		return nil, nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("invite is expired"))
+	}
+
+	existingRole, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, user.ID, invite.GroupID)
+	if err != nil {
+		return nil, nil, errorbase.New(errdict.ErrInternal, errorbase.WithDetail("failed to check existing membership"))
+	}
+
+	if existingRole != "" {
+		forbidden := errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("user is already a member of the group"))
+		return nil, nil, forbidden
+	}
+
+	// Note: membership/role checks moved to usecase where RequireRole is not used for AcceptInvite (public).
+	checkGroupExist, err := v.groupRepo.CheckGroupExists(ctx, invite.GroupID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if !checkGroupExist {
+		return nil, nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("group is not found"))
+	}
+
+	countMember, err := v.groupRepo.CountManagerAndMemberByGroupID(ctx, invite.GroupID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if countMember >= 9 {
+		return nil, nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("the group has reached maximum number of members"))
+	}
+
+	countViewer, err := v.groupRepo.CountViewerByGroupID(ctx, invite.GroupID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if invite.Role == string(enum.GroupRoleViewer) && countViewer >= 10 {
+		return nil, nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("the group has reached maximum number of viewers"))
+	}
+
+	return invite, user, nil
 }
