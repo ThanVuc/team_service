@@ -67,6 +67,11 @@ func (s *TeamServer) Start(ctx context.Context) error {
 		s.adapter.WorkController,
 	)
 
+	team_service.RegisterUserServiceServer(
+		s.server,
+		s.adapter.UserController,
+	)
+
 	s.logger.Info(
 		fmt.Sprintf(
 			"gRPC server listening on %s:%d",

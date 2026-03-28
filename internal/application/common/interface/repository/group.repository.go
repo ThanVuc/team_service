@@ -22,4 +22,6 @@ type GroupRepository interface {
 	RemoveMember(ctx context.Context, groupID string, userID string) errorbase.AppError
 	CheckMemberExistsByEmail(ctx context.Context, groupID string, email string) (bool, errorbase.AppError)
 	GetSimpleUsersByGroupID(ctx context.Context, groupID string) ([]*appdto.SimpleUserResponse, errorbase.AppError)
+	CountViewerByGroupID(ctx context.Context, groupID string) (int64, errorbase.AppError)
+	GetListUserIDByGroupID(ctx context.Context, groupID string) ([]string, errorbase.AppError)
 }

@@ -211,6 +211,41 @@ func (r *WorkRepository) GetWorksBySprint(
 	return works, nil
 }
 
+func (r *WorkRepository) GetWorksBySprintWithoutAggregation(
+	ctx context.Context,
+	groupID string,
+	sprintID string,
+) ([]*entity.Work, errorbase.AppError) {
+	groupUUID, appErr := parseUUID(groupID, "group id")
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	sprintUUID, appErr := parseUUID(sprintID, "sprint id")
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	rows, err := r.q.GetWorksBySprintWithoutAggregation(ctx, database.GetWorksBySprintWithoutAggregationParams{
+		GroupID:  groupUUID,
+		SprintID: sprintUUID,
+	})
+	if err != nil {
+		return nil, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to get works by sprint without aggregation sprint id=%s group id=%s", sprintID, groupID)),
+		)
+	}
+
+	works := make([]*entity.Work, 0, len(rows))
+	for _, row := range rows {
+		works = append(works, mapDBWorkToEntity(row))
+	}
+
+	return works, nil
+}
+
 func (r *WorkRepository) GetWorkAggregation(
 	ctx context.Context,
 	workID string,
@@ -750,9 +785,18 @@ func mapDBWorkToEntity(w database.Work) *entity.Work {
 		StoryPoint:    nullableInt4ToPtr(w.StoryPoint),
 		Priority:      priority,
 		DueDate:       nullableDateToPtr(w.DueDate),
+		CompletedAt:   nullableTimestampToPtr(w.CompletedAt),
 		CreatedAt:     w.CreatedAt.Time,
 		UpdatedAt:     w.UpdatedAt.Time,
 	}
+}
+
+func nullableTimestampToPtr(v pgtype.Timestamptz) *time.Time {
+	if !v.Valid {
+		return nil
+	}
+
+	return utils.Ptr(v.Time)
 }
 
 func mapGetWorkRowToDTO(row database.GetWorkRow) appdto.WorkResponse {

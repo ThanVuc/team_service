@@ -1,6 +1,8 @@
 package appdto
 
 import (
+	appconstant "team_service/internal/application/common/constant"
+	"team_service/internal/domain/entity"
 	"team_service/internal/domain/enum"
 	"time"
 )
@@ -41,6 +43,10 @@ type DeleteSprintRequest struct {
 	SprintID string
 }
 
+type ExportSprintRequest struct {
+	SprintID string
+}
+
 type ListSprintsResponse struct {
 	Sprints []SprintResponse
 	Total   int32
@@ -53,6 +59,12 @@ type UpdateSprintStatusResponse struct {
 
 type DeleteSprintResponse struct {
 	Success bool
+}
+
+type ExportSprintResponse struct {
+	FileName    string
+	File        []byte
+	ContentType string
 }
 
 type SprintResponse struct {
@@ -79,4 +91,49 @@ type SimpleSprintResponse struct {
 	ID     string
 	Name   string
 	Status enum.SprintStatus
+}
+
+type SprintExportInput struct {
+	Sprint   *entity.Sprint
+	Members  []*entity.User
+	Works    []*entity.Work
+	FileName string
+}
+
+type SprintExportOutput struct {
+	FileName string
+	Content  []byte
+}
+
+type SprintTaskView struct {
+	Name         string
+	AssigneeName string
+	StoryPoint   *int
+	CompletedAt  *time.Time
+	Status       appconstant.SprintTaskStatus
+}
+
+type SprintStatistic struct {
+	TotalEstimated   int
+	TotalCompleted   int
+	CompletionRate   float64
+	Spillover        int
+	UnestimatedCount int
+}
+
+type SprintExportStyles struct {
+	Base       int
+	Bold       int
+	BoldBorder int
+	Header     int
+	TotalLabel int
+	TotalData  int
+	DoneEarly  int
+	DoneOnTime int
+	DoneLate   int
+}
+
+type SprintExportCellColor struct {
+	Cell   string
+	Status appconstant.SprintTaskStatus
 }

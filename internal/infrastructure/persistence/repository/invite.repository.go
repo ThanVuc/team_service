@@ -128,3 +128,31 @@ func (r InviteRepository) CheckPendingInviteExists(ctx context.Context, groupID 
 	return exists, nil
 
 }
+
+func (r InviteRepository) GetInviteByToken(ctx context.Context, token string) (*entity.Invite, errorbase.AppError) {
+	dbInvite, err := r.q.GetInviteByToken(ctx, token)
+	if err != nil {
+		return nil, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to get invite by token"),
+		)
+	}
+
+	invite := &entity.Invite{
+		ID:        dbInvite.ID.String(),
+		GroupID:   dbInvite.GroupID.String(),
+		Token:     dbInvite.Token,
+		Role:      dbInvite.Role,
+		Email:     nil,
+		ExpiresAt: dbInvite.ExpiresAt.Time,
+		CreatedBy: dbInvite.CreatedBy.String(),
+		CreatedAt: dbInvite.CreatedAt.Time,
+	}
+
+	if dbInvite.Email.Valid {
+		invite.Email = &dbInvite.Email.String
+	}
+
+	return invite, nil
+}

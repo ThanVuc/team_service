@@ -12,6 +12,7 @@ type WorkRepository interface {
 	UpdateWork(ctx context.Context, req *appdto.UpdateWorkRequest) (*appdto.WorkResponse, errorbase.AppError)
 	DeleteWork(ctx context.Context, workID string) (*appdto.DeleteWorkResponse, errorbase.AppError)
 	GetWorksBySprint(ctx context.Context, groupID string, sprintID *string, assigneeID *string) ([]appdto.WorkResponse, errorbase.AppError)
+	GetWorksBySprintWithoutAggregation(ctx context.Context, groupID string, sprintID string) ([]*entity.Work, errorbase.AppError)
 	GetWorkAggregation(ctx context.Context, workID string) (*appdto.WorkResponse, errorbase.AppError)
 	GetChecklistItemMeta(ctx context.Context, itemID string) (*appdto.ChecklistItemMeta, errorbase.AppError)
 	GetCommentMeta(ctx context.Context, commentID string) (*appdto.CommentMeta, errorbase.AppError)

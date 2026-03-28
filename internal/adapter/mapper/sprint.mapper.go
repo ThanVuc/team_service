@@ -1,6 +1,7 @@
 package adapermapper
 
 import (
+	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
 	"team_service/proto/common"
 	"team_service/proto/team_service"
@@ -84,6 +85,16 @@ func ToDeleteSprintDTO(req *common.IDRequest) *appdto.DeleteSprintRequest {
 	}
 
 	return &appdto.DeleteSprintRequest{
+		SprintID: req.Id,
+	}
+}
+
+func ToExportSprintDTO(req *common.IDRequest) *appdto.ExportSprintRequest {
+	if req == nil {
+		return nil
+	}
+
+	return &appdto.ExportSprintRequest{
 		SprintID: req.Id,
 	}
 }
@@ -227,6 +238,36 @@ func ToDeleteSprintGrpcResponse(resp *appdto.BaseResponse[appdto.DeleteSprintRes
 	return &team_service.DeleteSprintResponse{
 		Success: success,
 		Error:   ToProtoError(resp.Error),
+	}
+}
+
+func ToExportSprintGrpcResponse(resp *appdto.BaseResponse[appdto.ExportSprintResponse]) *team_service.ExportSprintResponse {
+	if resp == nil {
+		return &team_service.ExportSprintResponse{
+			File:        nil,
+			Filename:    "",
+			ContentType: appconstant.SprintExportContentType,
+			Error:       ToProtoError(nil),
+		}
+	}
+
+	file := make([]byte, 0)
+	filename := ""
+	contentType := appconstant.SprintExportContentType
+
+	if resp.Data != nil {
+		file = resp.Data.File
+		filename = resp.Data.FileName
+		if resp.Data.ContentType != "" {
+			contentType = resp.Data.ContentType
+		}
+	}
+
+	return &team_service.ExportSprintResponse{
+		File:        file,
+		Filename:    filename,
+		ContentType: contentType,
+		Error:       ToProtoError(resp.Error),
 	}
 }
 

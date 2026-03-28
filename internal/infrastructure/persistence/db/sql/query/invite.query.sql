@@ -30,3 +30,10 @@ SELECT EXISTS(
     AND email = $2
     AND expires_at > NOW()
 );
+
+
+-- name: GetInviteByToken :one
+SELECT id, group_id, token, role, email, expires_at, created_by, created_at
+FROM invites
+WHERE token = $1
+AND expires_at > NOW();

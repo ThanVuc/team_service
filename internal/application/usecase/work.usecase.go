@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"fmt"
+	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
 	apphelper "team_service/internal/application/common/helper"
 	irepository "team_service/internal/application/common/interface/repository"
@@ -12,17 +14,20 @@ import (
 	errdict "team_service/internal/domain/common/apperror/err"
 	"team_service/internal/domain/entity"
 	"team_service/internal/domain/enum"
+	"team_service/internal/infrastructure/share/utils"
 )
 
 type workUseCase struct {
-	store      istore.Store
-	workRepo   irepository.WorkRepository
-	validator  *appvalidation.WorkValidator
-	authHelper *apphelper.AuthHelper
+	store              istore.Store
+	workRepo           irepository.WorkRepository
+	groupRepo          irepository.GroupRepository
+	validator          *appvalidation.WorkValidator
+	authHelper         *apphelper.AuthHelper
+	notificationHelper *apphelper.NotificationHelper
 }
 
 func (uc *workUseCase) CreateWork(ctx context.Context, req *appdto.CreateWorkRequest) (*appdto.BaseResponse[appdto.WorkResponse], errorbase.AppError) {
-	_, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleMember)
+	actor, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleMember)
 	if err != nil {
 		return &appdto.BaseResponse[appdto.WorkResponse]{
 			Data:  nil,
@@ -55,6 +60,38 @@ func (uc *workUseCase) CreateWork(ctx context.Context, req *appdto.CreateWorkReq
 	if err != nil {
 		return nil, err
 	}
+
+	// publish work created notification
+	domain := utils.GetBaseURLFromIncomingContext(ctx)
+	if domain == "" {
+		domain = "https://www.schedulr.site"
+	}
+	link := fmt.Sprintf("%s/groups/%s/works/%s", domain, createdWork.GroupID, createdWork.ID)
+	receivers := []string{actor.ID}
+	if createdWork.AssigneeID != "" && createdWork.AssigneeID != actor.ID {
+		receivers = append(receivers, createdWork.AssigneeID)
+	}
+	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
+		EventType:   appconstant.EventTypeWorkCreated,
+		SenderID:    actor.ID,
+		ReceiverIDs: receivers,
+		Payload: appdto.TeamNotificationMessagePayload{
+			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeWorkCreated),
+			Message:         fmt.Sprintf("Bạn đã tạo công việc %s", createdWork.Name),
+			Link:            utils.Ptr(link),
+			ImageURL:        nil,
+			CorrelationID:   createdWork.GroupID,
+			CorrelationType: int(appconstant.CorrelationTypeWork),
+		},
+		Metadata: appdto.TeamNotificationMessageMetadata{
+			IsSentMail:           false,
+			NonExistentReceivers: []string{},
+		},
+	}, &appdto.UserWithPermission{
+		ID:                   actor.ID,
+		HasEmailNotification: actor.HasEmailNotification,
+		HasPushNotification:  actor.HasPushNotification,
+	})
 
 	return &appdto.BaseResponse[appdto.WorkResponse]{
 		Data:  appmapper.ToWorkResponse(createdWork),
@@ -155,14 +192,14 @@ func (uc *workUseCase) UpdateWork(ctx context.Context, req *appdto.UpdateWorkReq
 		}, nil
 	}
 
-	var updatedWork *appdto.WorkResponse
+	var updatedWorkResp *appdto.WorkResponse
 	err = uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
-		updatedWork, err = repo.WorkRepository().UpdateWork(ctx, payload.Request)
+		updatedWorkResp, err = repo.WorkRepository().UpdateWork(ctx, payload.Request)
 		if err != nil {
 			return err
 		}
 
-		if updatedWork == nil {
+		if updatedWorkResp == nil {
 			return errorbase.New(errdict.ErrInternal, errorbase.WithDetail("update work returned nil"))
 		}
 
@@ -173,10 +210,50 @@ func (uc *workUseCase) UpdateWork(ctx context.Context, req *appdto.UpdateWorkReq
 		return nil, err
 	}
 
-	updatedWork, err = uc.workRepo.GetWorkAggregation(ctx, payload.WorkID)
+	updatedWork, err := uc.workRepo.GetWorkAggregation(ctx, payload.WorkID)
 	if err != nil {
 		return nil, err
 	}
+
+	// publish work updated notification
+	domain := utils.GetBaseURLFromIncomingContext(ctx)
+	if domain == "" {
+		domain = "https://www.schedulr.site"
+	}
+	link := fmt.Sprintf("%s/groups/%s/works/%s", domain, updatedWork.GroupID, updatedWork.ID)
+
+	var message string
+	message = fmt.Sprintf("Công việc %s đã được cập nhật", updatedWork.Name)
+
+	receivers := []string{actor.ID}
+	if updatedWork.AssigneeID != nil {
+		if *updatedWork.AssigneeID != "" && *updatedWork.AssigneeID != actor.ID {
+			message = fmt.Sprintf("Công việc %s đã được cập nhật và được giao cho %s", updatedWork.Name, updatedWork.Assignee.Email)
+			receivers = append(receivers, *updatedWork.AssigneeID)
+		}
+	}
+
+	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
+		EventType:   appconstant.EventTypeWorkUpdated,
+		SenderID:    actor.ID,
+		ReceiverIDs: receivers,
+		Payload: appdto.TeamNotificationMessagePayload{
+			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeWorkUpdated),
+			Message:         message,
+			Link:            utils.Ptr(link),
+			ImageURL:        nil,
+			CorrelationID:   updatedWork.GroupID,
+			CorrelationType: int(appconstant.CorrelationTypeWork),
+		},
+		Metadata: appdto.TeamNotificationMessageMetadata{
+			IsSentMail:           false,
+			NonExistentReceivers: []string{},
+		},
+	}, &appdto.UserWithPermission{
+		ID:                   actor.ID,
+		HasEmailNotification: actor.HasEmailNotification,
+		HasPushNotification:  actor.HasPushNotification,
+	})
 
 	return &appdto.BaseResponse[appdto.WorkResponse]{
 		Data:  updatedWork,
@@ -218,6 +295,35 @@ func (uc *workUseCase) DeleteWork(ctx context.Context, req *appdto.DeleteWorkReq
 	if err != nil {
 		return nil, err
 	}
+
+	// publish work deleted notification
+	domain := utils.GetBaseURLFromIncomingContext(ctx)
+	if domain == "" {
+		domain = "https://www.schedulr.site"
+	}
+	// we don't have deleted work details here, use work id from payload
+	link := fmt.Sprintf("%s/groups/%s/works", domain, "")
+	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
+		EventType:   appconstant.EventTypeWorkDeleted,
+		SenderID:    actor.ID,
+		ReceiverIDs: []string{actor.ID},
+		Payload: appdto.TeamNotificationMessagePayload{
+			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeWorkDeleted),
+			Message:         "Công việc đã bị xóa",
+			Link:            utils.Ptr(link),
+			ImageURL:        nil,
+			CorrelationID:   "",
+			CorrelationType: int(appconstant.CorrelationTypeWork),
+		},
+		Metadata: appdto.TeamNotificationMessageMetadata{
+			IsSentMail:           false,
+			NonExistentReceivers: []string{},
+		},
+	}, &appdto.UserWithPermission{
+		ID:                   actor.ID,
+		HasEmailNotification: actor.HasEmailNotification,
+		HasPushNotification:  actor.HasPushNotification,
+	})
 
 	return &appdto.BaseResponse[appdto.DeleteWorkResponse]{
 		Data:  deletedResult,

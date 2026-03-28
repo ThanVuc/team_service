@@ -38,6 +38,11 @@ type DeleteSprintPayload struct {
 	SprintID string
 }
 
+type ExportSprintPayload struct {
+	SprintID string
+	GroupID  string
+}
+
 func NewSprintValidator(
 	sprintRepo irepository.SprintRepository,
 	userRepo irepository.UserRepository,
@@ -429,6 +434,60 @@ func (v *SprintValidator) ValidateDeleteSprint(
 	}
 
 	return &DeleteSprintPayload{SprintID: sprintID}, nil
+}
+
+func (v *SprintValidator) ValidateExportSprint(
+	ctx context.Context,
+	req *appdto.ExportSprintRequest,
+) (*ExportSprintPayload, errorbase.AppError) {
+	if req == nil {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("request is required"))
+	}
+
+	sprintID := strings.TrimSpace(req.SprintID)
+	if sprintID == "" {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("sprint id is required"))
+	}
+
+	if _, err := uuid.Parse(sprintID); err != nil {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("sprint id must be a valid UUID"))
+	}
+
+	groupID := strings.TrimSpace(utils.GetGroupIDFromContext(ctx))
+	if groupID == "" {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required in context"))
+	}
+
+	if _, err := uuid.Parse(groupID); err != nil {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id in context must be a valid UUID"))
+	}
+
+	groupExists, err := v.groupRepo.CheckGroupExists(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !groupExists {
+		return nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("group not found"))
+	}
+
+	sprint, err := v.sprintRepo.GetSprintByID(ctx, sprintID)
+	if err != nil {
+		return nil, err
+	}
+
+	if sprint == nil {
+		return nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("sprint not found"))
+	}
+
+	if sprint.GroupID != groupID {
+		return nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("sprint not found in group"))
+	}
+
+	return &ExportSprintPayload{
+		SprintID: sprintID,
+		GroupID:  groupID,
+	}, nil
 }
 
 func isDateRangeOverlapInclusive(startA, endA, startB, endB time.Time) bool {

@@ -59,3 +59,13 @@ type SimpleUserResponse struct {
 	Email     string  `json:"email"`
 	AvatarURL *string `json:"avatar_url,omitempty"`
 }
+
+type UserInfoRequest struct {
+}
+
+type UserInfoResponse struct {
+	Email                string `json:"email"`
+	HasEmailNotification bool
+	HasPushNotification  bool
+	CreatedAt            int64 `json:"created_at"`
+}
