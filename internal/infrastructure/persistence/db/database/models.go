@@ -96,4 +96,5 @@ type Work struct {
 	DueDate       pgtype.Date
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
+	CompletedAt   pgtype.Timestamptz
 }

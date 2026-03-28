@@ -159,7 +159,7 @@ INSERT INTO works (
 	NOW(),
 	NOW()
 )
-RETURNING id, group_id, sprint_id, name, description, status, assignee_id, creator_id, estimate_hours, story_point, priority, due_date, created_at, updated_at
+RETURNING id, group_id, sprint_id, name, description, status, assignee_id, creator_id, estimate_hours, story_point, priority, due_date, created_at, updated_at, completed_at
 `
 
 type CreateWorkParams struct {
@@ -196,6 +196,7 @@ func (q *Queries) CreateWork(ctx context.Context, arg CreateWorkParams) (Work, e
 		&i.DueDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CompletedAt,
 	)
 	return i, err
 }
@@ -556,6 +557,56 @@ func (q *Queries) GetWorksBySprint(ctx context.Context, arg GetWorksBySprintPara
 			&i.UpdatedAt,
 			&i.AssigneeEmail,
 			&i.AssigneeAvatarUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getWorksBySprintWithoutAggregation = `-- name: GetWorksBySprintWithoutAggregation :many
+SELECT id, group_id, sprint_id, name, description, status, assignee_id, creator_id, estimate_hours, story_point, priority, due_date, created_at, updated_at, completed_at
+FROM works
+WHERE group_id = $1
+AND sprint_id IS NOT DISTINCT FROM $2
+ORDER BY
+completed_at ASC NULLS LAST
+`
+
+type GetWorksBySprintWithoutAggregationParams struct {
+	GroupID  pgtype.UUID
+	SprintID pgtype.UUID
+}
+
+func (q *Queries) GetWorksBySprintWithoutAggregation(ctx context.Context, arg GetWorksBySprintWithoutAggregationParams) ([]Work, error) {
+	rows, err := q.db.Query(ctx, getWorksBySprintWithoutAggregation, arg.GroupID, arg.SprintID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Work
+	for rows.Next() {
+		var i Work
+		if err := rows.Scan(
+			&i.ID,
+			&i.GroupID,
+			&i.SprintID,
+			&i.Name,
+			&i.Description,
+			&i.Status,
+			&i.AssigneeID,
+			&i.CreatorID,
+			&i.EstimateHours,
+			&i.StoryPoint,
+			&i.Priority,
+			&i.DueDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CompletedAt,
 		); err != nil {
 			return nil, err
 		}

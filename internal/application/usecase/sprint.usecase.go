@@ -21,9 +21,12 @@ import (
 type sprintUseCase struct {
 	store              istore.Store
 	sprintRepo         irepository.SprintRepository
-	groupRepo          irepository.GroupRepository
+	workRepo           irepository.WorkRepository
+	userRepo           irepository.UserRepository
 	validator          *appvalidation.SprintValidator
 	authHelper         *apphelper.AuthHelper
+	sprintExportHelper *apphelper.SprintExportHelper
+	groupRepo          irepository.GroupRepository
 	notificationHelper *apphelper.NotificationHelper
 }
 
@@ -531,4 +534,119 @@ func (uc *sprintUseCase) DeleteSprint(ctx context.Context, req *appdto.DeleteSpr
 		Data:  &appdto.DeleteSprintResponse{Success: true},
 		Error: nil,
 	}, nil
+}
+
+func (uc *sprintUseCase) ExportSprint(ctx context.Context, req *appdto.ExportSprintRequest) (*appdto.BaseResponse[appdto.ExportSprintResponse], errorbase.AppError) {
+	_, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.ExportSprintResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	payload, err := uc.validator.ValidateExportSprint(ctx, req)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.ExportSprintResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	sprint, err := uc.sprintRepo.GetSprintByID(ctx, payload.SprintID)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.ExportSprintResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	if sprint == nil {
+		return &appdto.BaseResponse[appdto.ExportSprintResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    errdict.ErrNotFound.Code,
+				Message: errdict.ErrNotFound.Title,
+				Detail:  domainhelper.Ptr("sprint not found"),
+			},
+		}, nil
+	}
+
+	membersResp, err := uc.userRepo.GetListMembersByGroupID(ctx, payload.GroupID)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.ExportSprintResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	works, err := uc.workRepo.GetWorksBySprintWithoutAggregation(ctx, payload.GroupID, payload.SprintID)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.ExportSprintResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	exportOutput, appErr := uc.sprintExportHelper.BuildSprintBurndownExcel(appdto.SprintExportInput{
+		Sprint:   sprint,
+		Members:  toSprintExportUsers(membersResp),
+		Works:    works,
+		FileName: appconstant.SprintExportFileNamePrefix + payload.SprintID + ".xlsx",
+	})
+	if appErr != nil {
+		return &appdto.BaseResponse[appdto.ExportSprintResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    appErr.ErrorInfo().Code,
+				Message: appErr.ErrorInfo().Title,
+				Detail:  appErr.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	return &appdto.BaseResponse[appdto.ExportSprintResponse]{
+		Data: &appdto.ExportSprintResponse{
+			FileName:    exportOutput.FileName,
+			File:        exportOutput.Content,
+			ContentType: appconstant.SprintExportContentType,
+		},
+		Error: nil,
+	}, nil
+}
+
+func toSprintExportUsers(resp *appdto.ListMembersResponse) []*entity.User {
+	if resp == nil || len(resp.Members) == 0 {
+		return []*entity.User{}
+	}
+
+	members := make([]*entity.User, 0, len(resp.Members))
+	for _, member := range resp.Members {
+		members = append(members, &entity.User{
+			ID:    member.ID,
+			Email: member.Email,
+		})
+	}
+
+	return members
 }
