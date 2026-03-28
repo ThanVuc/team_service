@@ -87,3 +87,26 @@ func (q *Queries) CreateInvite(ctx context.Context, arg CreateInviteParams) (Cre
 	err := row.Scan(&i.Token, &i.ExpiresAt, &i.CreatedAt)
 	return i, err
 }
+
+const getInviteByToken = `-- name: GetInviteByToken :one
+SELECT id, group_id, token, role, email, expires_at, created_by, created_at
+FROM invites
+WHERE token = $1
+AND expires_at > NOW()
+`
+
+func (q *Queries) GetInviteByToken(ctx context.Context, token string) (Invite, error) {
+	row := q.db.QueryRow(ctx, getInviteByToken, token)
+	var i Invite
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.Token,
+		&i.Role,
+		&i.Email,
+		&i.ExpiresAt,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}

@@ -58,6 +58,27 @@ func (q *Queries) GetListGroupMembers(ctx context.Context, groupID pgtype.UUID) 
 	return items, nil
 }
 
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, email, status, created_at, avatar_url, has_email_notification, has_push_notification
+FROM users
+WHERE email = $1
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Status,
+		&i.CreatedAt,
+		&i.AvatarUrl,
+		&i.HasEmailNotification,
+		&i.HasPushNotification,
+	)
+	return i, err
+}
+
 const getUserByID = `-- name: GetUserByID :one
 SELECT id, email, status, created_at, avatar_url, has_email_notification, has_push_notification
 FROM users
@@ -130,6 +151,31 @@ func (q *Queries) GetUserWithPermissionByID(ctx context.Context, arg GetUserWith
 		&i.JoinedAt,
 	)
 	return i, err
+}
+
+const updateUserNotificationSettings = `-- name: UpdateUserNotificationSettings :one
+WITH updated AS (
+    UPDATE users
+    SET
+        has_email_notification = $2,
+        has_push_notification = $3
+    WHERE id = $1
+    RETURNING 1
+)
+SELECT EXISTS (SELECT 1 FROM updated)
+`
+
+type UpdateUserNotificationSettingsParams struct {
+	ID                   pgtype.UUID
+	HasEmailNotification bool
+	HasPushNotification  bool
+}
+
+func (q *Queries) UpdateUserNotificationSettings(ctx context.Context, arg UpdateUserNotificationSettingsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, updateUserNotificationSettings, arg.ID, arg.HasEmailNotification, arg.HasPushNotification)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const upsertUser = `-- name: UpsertUser :exec

@@ -17,6 +17,7 @@ type Dependency struct {
 	GroupController  *grpccontroller.GroupController
 	SprintController *grpccontroller.SprintController
 	WorkController   *grpccontroller.WorkController
+	UserController   *grpccontroller.UserController
 
 	// Messaging Handlers
 	AuthHandler *adaptermessaginghandler.AuthHandler
@@ -52,6 +53,10 @@ func (d *Dependency) Start(ctx context.Context) error {
 		d.infra.GetLogger(),
 	)
 
+	d.UserController = grpccontroller.NewUserController(
+		d.app.UserUseCase,
+		d.infra.GetLogger(),
+	)
 	// ===================================
 	// Messaging Handlers
 	// ===================================

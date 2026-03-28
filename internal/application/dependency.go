@@ -36,6 +36,7 @@ func (d *Dependency) InitUseCases(ctx context.Context) error {
 	groupValidator := appvalidation.NewGroupValidator(
 		store.GroupRepository(),
 		store.UserRepository(),
+		store.InviteRepository(),
 	)
 
 	sprintValidator := appvalidation.NewSprintValidator(
@@ -75,11 +76,13 @@ func (d *Dependency) InitUseCases(ctx context.Context) error {
 		store,
 		sprintValidator,
 		authHelper,
+		notificationHelper,
 	)
 	d.WorkUseCase = usecase.NewWorkUseCase(
 		store,
 		workValidator,
 		authHelper,
+		notificationHelper,
 	)
 
 	return nil

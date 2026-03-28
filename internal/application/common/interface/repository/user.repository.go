@@ -12,4 +12,6 @@ type UserRepository interface {
 	GetUserWithPermissionByID(ctx context.Context, userID string, groupId string) (*appdto.UserWithPermission, errorbase.AppError)
 	UpsertUser(ctx context.Context, user *entity.User) errorbase.AppError
 	GetListMembersByGroupID(ctx context.Context, groupID string) (*appdto.ListMembersResponse, errorbase.AppError)
+	GetUserByEmail(ctx context.Context, email string) (*entity.User, errorbase.AppError)
+	UpdateUserNotificationSettings(ctx context.Context, userID string, hasEmailNotification bool, hasPushNotification bool) (bool, errorbase.AppError)
 }

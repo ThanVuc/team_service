@@ -47,7 +47,7 @@ func (c *GroupController) CreateGroup(ctx context.Context, req *team_service.Cre
 func (c *GroupController) GetGroup(ctx context.Context, req *common.IDRequest) (*team_service.GetGroupResponse, error) {
 	getGroupReq := adapermapper.ToGetGroupRequest(req)
 
-	resp, err := utils.WithSafePanic(ctx, c.logger, getGroupReq, c.groupUseCase.GetGroupRequest)
+	resp, err := utils.WithSafePanic(ctx, c.logger, getGroupReq, c.groupUseCase.GetGroup)
 	if err != nil {
 		return nil, err
 	}
@@ -133,13 +133,24 @@ func (c *GroupController) RemoveMember(ctx context.Context, req *team_service.Re
 }
 
 func (c *GroupController) CreateInvite(ctx context.Context, req *team_service.CreateInviteRequest) (*team_service.CreateInviteResponse, error) {
-	fmt.Println("Received 111111111111111111111 CreateInvite request:", req)
 	createInviteReq := adapermapper.ToCreateInviteRequest(req)
-	fmt.Println("invite22222222222222222222UseCase:", createInviteReq)
+	fmt.Printf("CreateInviteReq: %+v\n", createInviteReq)
+
 	resp, err := utils.WithSafePanic(ctx, c.logger, createInviteReq, c.groupUseCase.CreateInvite)
 	if err != nil {
 		return nil, err
 	}
 
 	return adapermapper.ToCreateInviteGrpcResponse(resp), nil
+}
+
+func (c *GroupController) AcceptInvite(ctx context.Context, req *team_service.AcceptInviteRequest) (*team_service.AcceptInviteResponse, error) {
+	acceptInviteReq := adapermapper.ToAcceptInviteRequest(req)
+
+	resp, err := utils.WithSafePanic(ctx, c.logger, acceptInviteReq, c.groupUseCase.AcceptInvite)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapermapper.ToAcceptInviteGrpcResponse(resp), nil
 }

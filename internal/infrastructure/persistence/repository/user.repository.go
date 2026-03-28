@@ -189,3 +189,52 @@ func (r *UserRepository) GetListMembersByGroupID(ctx context.Context, groupID st
 		Total:   int(len(memberVals)),
 	}, nil
 }
+
+func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*entity.User, errorbase.AppError) {
+	u, err := r.q.GetUserByEmail(ctx, email)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errorbase.New(
+				errdict.ErrNotFound,
+				errorbase.WithDetail("user not found"),
+			)
+		}
+
+		return nil, errorbase.Wrap(err, errdict.ErrBadRequest)
+	}
+
+	return &entity.User{
+		ID:        u.ID.String(),
+		Email:     u.Email,
+		Status:    enum.UserStatus(u.Status),
+		CreatedAt: u.CreatedAt.Time,
+		AvatarURL: utils.Ptr(u.AvatarUrl.String),
+	}, nil
+}
+
+func (r *UserRepository) UpdateUserNotificationSettings(ctx context.Context, userID string, hasEmailNotification bool, hasPushNotification bool) (bool, errorbase.AppError) {
+	userUUID, err := utils.ToUUID(userID)
+	if err != nil || !userUUID.Valid {
+		return false, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse user id to UUID"),
+		)
+	}
+
+	hasNoti, err := r.q.UpdateUserNotificationSettings(ctx, database.UpdateUserNotificationSettingsParams{
+		ID:                   userUUID,
+		HasEmailNotification: hasEmailNotification,
+		HasPushNotification:  hasPushNotification,
+	})
+
+	if err != nil {
+		return false, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to update user notification settings in repository"),
+		)
+	}
+
+	return hasNoti, nil
+}

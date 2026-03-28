@@ -12,10 +12,15 @@ func ToCreateInviteRequest(req *team_service.CreateInviteRequest) *appdto.Create
 		return nil
 	}
 
+	var email *string
+	if req.Email != nil {
+		email = req.Email
+	}
+
 	return &appdto.CreateInviteRequest{
 		GroupID: req.GroupId,
 		Role:    MapProtoGroupRole(req.Role),
-		Email:   req.Email,
+		Email:   email,
 	}
 }
 
@@ -44,5 +49,31 @@ func ToInviteMessage(invite *appdto.InviteResponse) *team_service.InviteMessage 
 		Code:      invite.Code,
 		ExpiresAt: timestamppb.New(invite.ExpiresAt),
 		CreatedAt: timestamppb.New(invite.CreatedAt),
+	}
+}
+
+func ToAcceptInviteRequest(req *team_service.AcceptInviteRequest) *appdto.AcceptInviteRequest {
+	if req == nil {
+		return nil
+	}
+
+	return &appdto.AcceptInviteRequest{
+		Code: req.Code,
+	}
+}
+
+func ToAcceptInviteGrpcResponse(
+	resp *appdto.BaseResponse[appdto.AcceptInviteResponse],
+) *team_service.AcceptInviteResponse {
+	if resp == nil || resp.Data == nil {
+		return &team_service.AcceptInviteResponse{
+			Location: "",
+			Error:    ToProtoError(nil),
+		}
+	}
+
+	return &team_service.AcceptInviteResponse{
+		Location: resp.Data.Location,
+		Error:    ToProtoError(resp.Error),
 	}
 }
