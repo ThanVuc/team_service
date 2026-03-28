@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	appdto "team_service/internal/application/common/dto"
@@ -12,6 +13,7 @@ import (
 	"team_service/internal/infrastructure/persistence/db/database"
 	"team_service/internal/infrastructure/share/utils"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -164,6 +166,7 @@ func (r *GroupRepository) GetGroupsByUserID(
 	}
 
 	rows, err := r.q.GetGroupsByUserID(ctx, userUUID)
+	fmt.Println("GetGroupsByUserID rows:", rows) // Log the retrieved rows for debugging
 	if err != nil {
 		return nil, errorbase.Wrap(
 			err,
@@ -175,6 +178,7 @@ func (r *GroupRepository) GetGroupsByUserID(
 	items := make([]appdto.ListGroupItem, 0, len(rows))
 	for _, row := range rows {
 		owner, err := r.q.GetOwnerByGroupID(ctx, row.ID)
+		fmt.Println("Owner for groupID", row.ID.String(), "is", owner) // Log the owner information for debugging
 		if err != nil {
 			return nil, errorbase.Wrap(
 				err,
@@ -292,6 +296,9 @@ func (r *GroupRepository) GetRoleByUserIDAndGroupID(
 	})
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
 		return "", errorbase.Wrap(
 			err,
 			errdict.ErrInternal,
@@ -567,4 +574,57 @@ func (r *GroupRepository) GetSimpleUsersByGroupID(
 	}
 
 	return users, nil
+}
+
+func (r *GroupRepository) CountViewerByGroupID(
+	ctx context.Context,
+	groupID string,
+) (int64, errorbase.AppError) {
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return 0, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	count, err := r.q.CountViewerByGroupID(ctx, groupUUID)
+	if err != nil {
+		return 0, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to count viewer for group=%s", groupID)),
+		)
+	}
+
+	return count, nil
+}
+
+func (r *GroupRepository) GetListUserIDByGroupID(
+	ctx context.Context,
+	groupID string,
+) ([]string, errorbase.AppError) {
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return nil, errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	rows, err := r.q.GetListUserIDByGroupID(ctx, groupUUID)
+	if err != nil {
+		return nil, errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to get list user id for group=%s", groupID)),
+		)
+	}
+
+	var userIDs []string
+	for _, row := range rows {
+		userIDs = append(userIDs, row.String())
+	}
+
+	return userIDs, nil
 }

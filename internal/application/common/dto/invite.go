@@ -22,6 +22,5 @@ type AcceptInviteRequest struct {
 }
 
 type AcceptInviteResponse struct {
-	GroupID string
-	Role    enum.GroupRole
+	Location string
 }

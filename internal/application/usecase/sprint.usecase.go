@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
 	apphelper "team_service/internal/application/common/helper"
@@ -14,6 +15,7 @@ import (
 	domainhelper "team_service/internal/domain/common/helper"
 	"team_service/internal/domain/entity"
 	"team_service/internal/domain/enum"
+	"team_service/internal/infrastructure/share/utils"
 )
 
 type sprintUseCase struct {
@@ -24,10 +26,12 @@ type sprintUseCase struct {
 	validator          *appvalidation.SprintValidator
 	authHelper         *apphelper.AuthHelper
 	sprintExportHelper *apphelper.SprintExportHelper
+	groupRepo          irepository.GroupRepository
+	notificationHelper *apphelper.NotificationHelper
 }
 
 func (uc *sprintUseCase) CreateSprint(ctx context.Context, req *appdto.CreateSprintRequest) (*appdto.BaseResponse[appdto.SprintResponse], errorbase.AppError) {
-	_, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
+	actor, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
 	if err != nil {
 		return &appdto.BaseResponse[appdto.SprintResponse]{
 			Data: nil,
@@ -68,6 +72,38 @@ func (uc *sprintUseCase) CreateSprint(ctx context.Context, req *appdto.CreateSpr
 	if err != nil {
 		return nil, err
 	}
+
+	var usersID []string
+	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, req.GroupID)
+	if err != nil {
+		return nil, err
+	}
+	domain := utils.GetBaseURLFromIncomingContext(ctx)
+	if domain == "" {
+		domain = "https://www.schedulr.site"
+	}
+	link := fmt.Sprintf("%s/groups/%s/sprints/%s", domain, createdSprint.GroupID, createdSprint.ID)
+	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
+		EventType:   appconstant.EventTypeSprintCreated,
+		SenderID:    actor.ID,
+		ReceiverIDs: usersID,
+		Payload: appdto.TeamNotificationMessagePayload{
+			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeSprintCreated),
+			Message:         fmt.Sprintf("%s đã tạo sprint %s thành công", actor.Email, createdSprint.Name),
+			Link:            utils.Ptr(link),
+			ImageURL:        nil,
+			CorrelationID:   createdSprint.GroupID,
+			CorrelationType: int(appconstant.CorrelationTypeSprint),
+		},
+		Metadata: appdto.TeamNotificationMessageMetadata{
+			IsSentMail:           false,
+			NonExistentReceivers: []string{},
+		},
+	}, &appdto.UserWithPermission{
+		ID:                   actor.ID,
+		HasEmailNotification: actor.HasEmailNotification,
+		HasPushNotification:  actor.HasPushNotification,
+	})
 
 	return &appdto.BaseResponse[appdto.SprintResponse]{
 		Data:  appmapper.ToSprintResponse(createdSprint),
@@ -247,7 +283,7 @@ func (uc *sprintUseCase) GetSimpleSprints(ctx context.Context, req *appdto.ListS
 }
 
 func (uc *sprintUseCase) UpdateSprint(ctx context.Context, req *appdto.UpdateSprintRequest) (*appdto.BaseResponse[appdto.SprintResponse], errorbase.AppError) {
-	_, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
+	actor, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
 	if err != nil {
 		return &appdto.BaseResponse[appdto.SprintResponse]{
 			Data: nil,
@@ -296,6 +332,40 @@ func (uc *sprintUseCase) UpdateSprint(ctx context.Context, req *appdto.UpdateSpr
 		return nil, err
 	}
 
+	var usersID []string
+	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, updatedSprint.GroupID)
+	if err != nil {
+		return nil, err
+	}
+
+	// publish sprint updated notification
+	domain := utils.GetBaseURLFromIncomingContext(ctx)
+	if domain == "" {
+		domain = "https://www.schedulr.site"
+	}
+	link := fmt.Sprintf("%s/groups/%s/sprints/%s", domain, updatedSprint.GroupID, updatedSprint.ID)
+	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
+		EventType:   appconstant.EventTypeSprintUpdated,
+		SenderID:    actor.ID,
+		ReceiverIDs: usersID,
+		Payload: appdto.TeamNotificationMessagePayload{
+			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeSprintUpdated),
+			Message:         fmt.Sprintf("Sprint %s đã được cập nhật", updatedSprint.Name),
+			Link:            utils.Ptr(link),
+			ImageURL:        nil,
+			CorrelationID:   updatedSprint.GroupID,
+			CorrelationType: int(appconstant.CorrelationTypeSprint),
+		},
+		Metadata: appdto.TeamNotificationMessageMetadata{
+			IsSentMail:           false,
+			NonExistentReceivers: []string{},
+		},
+	}, &appdto.UserWithPermission{
+		ID:                   actor.ID,
+		HasEmailNotification: actor.HasEmailNotification,
+		HasPushNotification:  actor.HasPushNotification,
+	})
+
 	return &appdto.BaseResponse[appdto.SprintResponse]{
 		Data:  appmapper.ToSprintResponse(updatedSprint),
 		Error: nil,
@@ -303,7 +373,7 @@ func (uc *sprintUseCase) UpdateSprint(ctx context.Context, req *appdto.UpdateSpr
 }
 
 func (uc *sprintUseCase) UpdateSprintStatus(ctx context.Context, req *appdto.UpdateSprintStatusRequest) (*appdto.BaseResponse[appdto.UpdateSprintStatusResponse], errorbase.AppError) {
-	_, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
+	actor, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
 	if err != nil {
 		return &appdto.BaseResponse[appdto.UpdateSprintStatusResponse]{
 			Data: nil,
@@ -345,6 +415,50 @@ func (uc *sprintUseCase) UpdateSprintStatus(ctx context.Context, req *appdto.Upd
 		return nil, err
 	}
 
+	// publish status change notification
+	eventType := appconstant.EventTypeSprintActivated
+	switch payload.Status {
+	case enum.SprintStatusActive:
+		eventType = appconstant.EventTypeSprintActivated
+	case enum.SprintStatusCompleted:
+		eventType = appconstant.EventTypeSprintCompleted
+	case enum.SprintStatusCancelled:
+		eventType = appconstant.EventTypeSprintCancelled
+	}
+
+	var usersID []string
+	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, updatedSprint.GroupID)
+	if err != nil {
+		return nil, err
+	}
+
+	domain := utils.GetBaseURLFromIncomingContext(ctx)
+	if domain == "" {
+		domain = "https://www.schedulr.site"
+	}
+	link := fmt.Sprintf("%s/groups/%s/sprints/%s", domain, updatedSprint.GroupID, updatedSprint.ID)
+	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
+		EventType:   eventType,
+		SenderID:    actor.ID,
+		ReceiverIDs: usersID,
+		Payload: appdto.TeamNotificationMessagePayload{
+			Title:           appconstant.GetDisplayTitle(eventType),
+			Message:         fmt.Sprintf("Sprint %s đã thay đổi trạng thái thành %s", updatedSprint.Name, string(payload.Status)),
+			Link:            utils.Ptr(link),
+			ImageURL:        nil,
+			CorrelationID:   updatedSprint.GroupID,
+			CorrelationType: int(appconstant.CorrelationTypeSprint),
+		},
+		Metadata: appdto.TeamNotificationMessageMetadata{
+			IsSentMail:           false,
+			NonExistentReceivers: []string{},
+		},
+	}, &appdto.UserWithPermission{
+		ID:                   actor.ID,
+		HasEmailNotification: actor.HasEmailNotification,
+		HasPushNotification:  actor.HasPushNotification,
+	})
+
 	return &appdto.BaseResponse[appdto.UpdateSprintStatusResponse]{
 		Data: &appdto.UpdateSprintStatusResponse{
 			SprintID: updatedSprint.ID,
@@ -355,7 +469,7 @@ func (uc *sprintUseCase) UpdateSprintStatus(ctx context.Context, req *appdto.Upd
 }
 
 func (uc *sprintUseCase) DeleteSprint(ctx context.Context, req *appdto.DeleteSprintRequest) (*appdto.BaseResponse[appdto.DeleteSprintResponse], errorbase.AppError) {
-	_, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
+	actor, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
 	if err != nil {
 		return &appdto.BaseResponse[appdto.DeleteSprintResponse]{
 			Data: nil,
@@ -379,12 +493,42 @@ func (uc *sprintUseCase) DeleteSprint(ctx context.Context, req *appdto.DeleteSpr
 		}, nil
 	}
 
+	sprint, _ := uc.sprintRepo.GetSprintByID(ctx, payload.SprintID)
+
 	err = uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
 		return repo.SprintRepository().DeleteSprint(ctx, payload.SprintID)
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	// publish delete notification
+	domain := utils.GetBaseURLFromIncomingContext(ctx)
+	if domain == "" {
+		domain = "https://www.schedulr.site"
+	}
+	link := fmt.Sprintf("%s/groups/%s/sprints", domain, sprint.GroupID)
+	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
+		EventType:   appconstant.EventTypeSprintDeleted,
+		SenderID:    actor.ID,
+		ReceiverIDs: []string{actor.ID},
+		Payload: appdto.TeamNotificationMessagePayload{
+			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeSprintDeleted),
+			Message:         fmt.Sprintf("Sprint %s đã bị xóa", sprint.Name),
+			Link:            utils.Ptr(link),
+			ImageURL:        nil,
+			CorrelationID:   sprint.GroupID,
+			CorrelationType: int(appconstant.CorrelationTypeSprint),
+		},
+		Metadata: appdto.TeamNotificationMessageMetadata{
+			IsSentMail:           false,
+			NonExistentReceivers: []string{},
+		},
+	}, &appdto.UserWithPermission{
+		ID:                   actor.ID,
+		HasEmailNotification: actor.HasEmailNotification,
+		HasPushNotification:  actor.HasPushNotification,
+	})
 
 	return &appdto.BaseResponse[appdto.DeleteSprintResponse]{
 		Data:  &appdto.DeleteSprintResponse{Success: true},

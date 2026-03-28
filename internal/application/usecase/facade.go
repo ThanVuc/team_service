@@ -17,8 +17,8 @@ type (
 	GroupUseCase interface {
 		CreateGroup(ctx context.Context, req *appdto.CreateGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError)
 		Ping(ctx context.Context, req *common.EmptyRequest) (*common.EmptyResponse, errorbase.AppError)
-		GetGroupRequest(ctx context.Context, req *appdto.GetGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError)
 		ListGroups(ctx context.Context, req *appdto.ListGroupsRequest) (*appdto.BaseResponse[appdto.ListGroupsResponse], errorbase.AppError)
+		GetGroup(ctx context.Context, req *appdto.GetGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError)
 		GetSimpleUserByGroupID(ctx context.Context, req *appdto.ListMembersRequest) (*appdto.BaseResponse[[]appdto.SimpleUserResponse], errorbase.AppError)
 		UpdateGroup(ctx context.Context, req *appdto.UpdateGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError)
 		DeleteGroup(ctx context.Context, req *appdto.DeleteGroupRequest) (*appdto.BaseResponse[appdto.DeleteGroupResponse], errorbase.AppError)
@@ -26,6 +26,7 @@ type (
 		UpdateMemberRole(ctx context.Context, req *appdto.UpdateMemberRoleRequest) (*appdto.BaseResponse[appdto.MemberResponse], errorbase.AppError)
 		RemoveMember(ctx context.Context, req *appdto.RemoveMemberRequest) (*appdto.BaseResponse[appdto.RemoveMemberResponse], errorbase.AppError)
 		CreateInvite(ctx context.Context, req *appdto.CreateInviteRequest) (*appdto.BaseResponse[appdto.InviteResponse], errorbase.AppError)
+		AcceptInvite(ctx context.Context, req *appdto.AcceptInviteRequest) (*appdto.BaseResponse[appdto.AcceptInviteResponse], errorbase.AppError)
 	}
 
 	SprintUseCase interface {
@@ -57,6 +58,8 @@ type (
 
 	UserUseCase interface {
 		SyncUserData(ctx context.Context) func(d rabbitmq.Delivery) rabbitmq.Action
+		GetUserInfo(ctx context.Context, req *appdto.UserInfoRequest) (*appdto.BaseResponse[appdto.UserInfoResponse], errorbase.AppError)
+		NotificationConfiguration(ctx context.Context, req *appdto.ConfigureNotificationRequest) (*appdto.BaseResponse[appdto.ConfigureNotificationResponse], errorbase.AppError)
 	}
 )
 
@@ -71,6 +74,7 @@ func NewGroupUseCase(
 		groupRepo:          store.GroupRepository(),
 		userRepo:           store.UserRepository(),
 		validator:          validator,
+		authHelper:         authHelper,
 		notificationHelper: notificationHelper,
 	}
 }
@@ -79,6 +83,7 @@ func NewSprintUseCase(
 	store istore.Store,
 	validator *appvalidation.SprintValidator,
 	authHelper *apphelper.AuthHelper,
+	notificationHelper *apphelper.NotificationHelper,
 ) SprintUseCase {
 	return &sprintUseCase{
 		store:              store,
@@ -88,6 +93,8 @@ func NewSprintUseCase(
 		validator:          validator,
 		authHelper:         authHelper,
 		sprintExportHelper: apphelper.NewSprintExportHelper(),
+		groupRepo:          store.GroupRepository(),
+		notificationHelper: notificationHelper,
 	}
 }
 
@@ -95,12 +102,15 @@ func NewWorkUseCase(
 	store istore.Store,
 	validator *appvalidation.WorkValidator,
 	authHelper *apphelper.AuthHelper,
+	notificationHelper *apphelper.NotificationHelper,
 ) WorkUseCase {
 	return &workUseCase{
-		store:      store,
-		workRepo:   store.WorkRepository(),
-		validator:  validator,
-		authHelper: authHelper,
+		store:              store,
+		workRepo:           store.WorkRepository(),
+		groupRepo:          store.GroupRepository(),
+		validator:          validator,
+		authHelper:         authHelper,
+		notificationHelper: notificationHelper,
 	}
 }
 

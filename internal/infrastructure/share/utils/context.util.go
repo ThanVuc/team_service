@@ -29,6 +29,18 @@ func GetUserIDFromOutgoingContext(ctx context.Context) string {
 	return ""
 }
 
+func GetBaseURLFromIncomingContext(ctx context.Context) string {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ""
+	}
+	vals := md.Get("x-base-url")
+	if len(vals) > 0 {
+		return vals[0]
+	}
+	return ""
+}
+
 func GetRequestID(d rabbitmq.Delivery) string {
 	if v, ok := d.Headers["request_id"]; ok {
 		switch val := v.(type) {

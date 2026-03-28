@@ -10,6 +10,7 @@ import (
 	errdict "team_service/internal/domain/common/apperror/err"
 	"team_service/internal/domain/entity"
 	"team_service/internal/domain/enum"
+	"team_service/internal/infrastructure/share/utils"
 	"team_service/proto/common"
 	"time"
 
@@ -73,4 +74,50 @@ func (uc *userUseCase) SyncUserData(ctx context.Context) func(d rabbitmq.Deliver
 
 		return rabbitmq.Ack
 	}
+}
+
+func (uc *userUseCase) GetUserInfo(ctx context.Context, req *appdto.UserInfoRequest) (*appdto.BaseResponse[appdto.UserInfoResponse], errorbase.AppError) {
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
+	user, err := uc.store.UserRepository().GetUserByID(ctx, userID)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.UserInfoResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	return &appdto.BaseResponse[appdto.UserInfoResponse]{
+		Data: &appdto.UserInfoResponse{
+			Email:                user.Email,
+			HasEmailNotification: user.HasEmailNotification,
+			HasPushNotification:  user.HasPushNotification,
+			CreatedAt:            user.CreatedAt.UnixMilli(),
+		},
+	}, nil
+}
+
+func (uc *userUseCase) NotificationConfiguration(ctx context.Context, req *appdto.ConfigureNotificationRequest) (*appdto.BaseResponse[appdto.ConfigureNotificationResponse], errorbase.AppError) {
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
+
+	success, err := uc.store.UserRepository().UpdateUserNotificationSettings(ctx, userID, req.UseEmailNotification, *req.UseAppNotification)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.ConfigureNotificationResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	return &appdto.BaseResponse[appdto.ConfigureNotificationResponse]{
+		Data: &appdto.ConfigureNotificationResponse{
+			Success: success,
+		},
+	}, nil
 }
