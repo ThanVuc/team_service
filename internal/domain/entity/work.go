@@ -172,8 +172,14 @@ func (w *Work) ChangeStatus(status enum.WorkStatus, now time.Time) errorbase.App
 		)
 	}
 
-	if status == enum.WorkStatusDone && w.CompletedAt == nil {
-		w.CompletedAt = &now
+	if status == enum.WorkStatusDone {
+		// Keep completion timestamp aligned with the latest done transition.
+		if w.Status != enum.WorkStatusDone || w.CompletedAt == nil {
+			w.CompletedAt = &now
+		}
+	} else {
+		// Reopened work must not retain done timestamp.
+		w.CompletedAt = nil
 	}
 
 	w.Status = status
