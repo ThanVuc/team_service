@@ -36,6 +36,7 @@ type (
 		UpdateSprint(ctx context.Context, req *appdto.UpdateSprintRequest) (*appdto.BaseResponse[appdto.SprintResponse], errorbase.AppError)
 		UpdateSprintStatus(ctx context.Context, req *appdto.UpdateSprintStatusRequest) (*appdto.BaseResponse[appdto.UpdateSprintStatusResponse], errorbase.AppError)
 		DeleteSprint(ctx context.Context, req *appdto.DeleteSprintRequest) (*appdto.BaseResponse[appdto.DeleteSprintResponse], errorbase.AppError)
+		ExportSprint(ctx context.Context, req *appdto.ExportSprintRequest) (*appdto.BaseResponse[appdto.ExportSprintResponse], errorbase.AppError)
 	}
 
 	WorkUseCase interface {
@@ -80,10 +81,13 @@ func NewSprintUseCase(
 	authHelper *apphelper.AuthHelper,
 ) SprintUseCase {
 	return &sprintUseCase{
-		store:      store,
-		sprintRepo: store.SprintRepository(),
-		validator:  validator,
-		authHelper: authHelper,
+		store:              store,
+		sprintRepo:         store.SprintRepository(),
+		workRepo:           store.WorkRepository(),
+		userRepo:           store.UserRepository(),
+		validator:          validator,
+		authHelper:         authHelper,
+		sprintExportHelper: apphelper.NewSprintExportHelper(),
 	}
 }
 

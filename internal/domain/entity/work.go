@@ -21,6 +21,7 @@ type Work struct {
 	StoryPoint    *int32
 	Priority      *enum.WorkPriority
 	DueDate       *time.Time
+	CompletedAt   *time.Time
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
@@ -169,6 +170,10 @@ func (w *Work) ChangeStatus(status enum.WorkStatus, now time.Time) errorbase.App
 			errdict.ErrBadRequest,
 			errorbase.WithDetail("invalid status"),
 		)
+	}
+
+	if status == enum.WorkStatusDone && w.CompletedAt == nil {
+		w.CompletedAt = &now
 	}
 
 	w.Status = status
