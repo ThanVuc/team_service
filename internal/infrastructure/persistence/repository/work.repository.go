@@ -102,12 +102,29 @@ func (r *WorkRepository) UpdateWork(
 		DueDate:     toNullableDate(req.DueDate),
 		Priority:    toNullableWorkPriority(req.Priority),
 		ID:          id,
+		Version:     req.Version,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			_, getErr := r.q.GetWork(ctx, id)
+			if getErr != nil {
+				if errors.Is(getErr, pgx.ErrNoRows) {
+					return nil, errorbase.New(
+						errdict.ErrNotFound,
+						errorbase.WithDetail(fmt.Sprintf("work not found id=%s", req.WorkID)),
+					)
+				}
+
+				return nil, errorbase.Wrap(
+					getErr,
+					errdict.ErrInternal,
+					errorbase.WithDetail(fmt.Sprintf("failed to verify work version id=%s", req.WorkID)),
+				)
+			}
+
 			return nil, errorbase.New(
-				errdict.ErrNotFound,
-				errorbase.WithDetail(fmt.Sprintf("work not found id=%s", req.WorkID)),
+				errdict.ErrConflict,
+				errorbase.WithDetail(fmt.Sprintf("work version conflict id=%s expected_version=%d", req.WorkID, req.Version)),
 			)
 		}
 
@@ -129,7 +146,7 @@ func (r *WorkRepository) UpdateWork(
 		DueDate:     fromAnyDate(updated.DueDate),
 		Priority:    enum.WorkPriority(utils.SafeString(fromAnyText(updated.Priority))),
 		UpdatedAt:   updated.UpdatedAt.Time,
-		Version:     req.Version,
+		Version:     updated.Version,
 	}
 
 	return resp, nil
@@ -815,6 +832,7 @@ func mapGetWorkRowToDTO(row database.GetWorkRow) appdto.WorkResponse {
 		DueDate:       nullableDateToPtr(row.DueDate),
 		CreatedAt:     row.CreatedAt.Time,
 		UpdatedAt:     row.UpdatedAt.Time,
+		Version:       row.Version,
 	}
 
 	if row.SprintID.Valid {
@@ -851,6 +869,7 @@ func mapGetWorksBySprintRowToDTO(row database.GetWorksBySprintRow) appdto.WorkRe
 		DueDate:       nullableDateToPtr(row.DueDate),
 		CreatedAt:     row.CreatedAt.Time,
 		UpdatedAt:     row.UpdatedAt.Time,
+		Version:       row.Version,
 	}
 
 	if row.AssigneeID.Valid {
