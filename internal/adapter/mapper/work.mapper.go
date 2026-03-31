@@ -57,7 +57,7 @@ func ToUpdateWorkDTO(req *team_service.UpdateWorkRequest) *appdto.UpdateWorkRequ
 		Status:      optionalWorkStatus(req.Status),
 		SprintID:    req.SprintId,
 		AssigneeID:  req.AssigneeId,
-		StoryPoint:  parseOptionalInt32(req.StoryPoint),
+		StoryPoint:  req.StoryPoint,
 		Priority:    optionalWorkPriority(req.Priority),
 		DueDate:     optionalDateToTime(req.DueDate),
 		Version:     req.Version,

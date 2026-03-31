@@ -97,4 +97,5 @@ type Work struct {
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 	CompletedAt   pgtype.Timestamptz
+	Version       int32
 }
