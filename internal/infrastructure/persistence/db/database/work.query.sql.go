@@ -159,7 +159,7 @@ INSERT INTO works (
 	NOW(),
 	NOW()
 )
-RETURNING id, group_id, sprint_id, name, description, status, assignee_id, creator_id, estimate_hours, story_point, priority, due_date, created_at, updated_at, completed_at
+RETURNING id, group_id, sprint_id, name, description, status, assignee_id, creator_id, estimate_hours, story_point, priority, due_date, created_at, updated_at, completed_at, version
 `
 
 type CreateWorkParams struct {
@@ -197,6 +197,7 @@ func (q *Queries) CreateWork(ctx context.Context, arg CreateWorkParams) (Work, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CompletedAt,
+		&i.Version,
 	)
 	return i, err
 }
@@ -426,6 +427,7 @@ SELECT
 	w.due_date,
 	w.created_at,
 	w.updated_at,
+	w.version,
 	s.name AS sprint_name,
 	u.email AS assignee_email,
 	u.avatar_url AS assignee_avatar_url
@@ -450,6 +452,7 @@ type GetWorkRow struct {
 	DueDate           pgtype.Date
 	CreatedAt         pgtype.Timestamptz
 	UpdatedAt         pgtype.Timestamptz
+	Version           int32
 	SprintName        pgtype.Text
 	AssigneeEmail     pgtype.Text
 	AssigneeAvatarUrl pgtype.Text
@@ -473,6 +476,7 @@ func (q *Queries) GetWork(ctx context.Context, id pgtype.UUID) (GetWorkRow, erro
 		&i.DueDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Version,
 		&i.SprintName,
 		&i.AssigneeEmail,
 		&i.AssigneeAvatarUrl,
@@ -496,13 +500,14 @@ SELECT
     w.due_date,
     w.created_at,
     w.updated_at,
+	w.version,
     u.email AS assignee_email,
     u.avatar_url AS assignee_avatar_url
 FROM works w
 LEFT JOIN users u ON u.id = w.assignee_id
 WHERE w.group_id = $1
-AND w.sprint_id IS NOT DISTINCT FROM $2
-AND w.assignee_id IS NOT DISTINCT FROM $3
+AND ($2::uuid IS NULL OR w.sprint_id = $2)
+AND ($3::uuid IS NULL OR w.assignee_id = $3)
 ORDER BY w.updated_at DESC
 `
 
@@ -527,6 +532,7 @@ type GetWorksBySprintRow struct {
 	DueDate           pgtype.Date
 	CreatedAt         pgtype.Timestamptz
 	UpdatedAt         pgtype.Timestamptz
+	Version           int32
 	AssigneeEmail     pgtype.Text
 	AssigneeAvatarUrl pgtype.Text
 }
@@ -555,6 +561,7 @@ func (q *Queries) GetWorksBySprint(ctx context.Context, arg GetWorksBySprintPara
 			&i.DueDate,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Version,
 			&i.AssigneeEmail,
 			&i.AssigneeAvatarUrl,
 		); err != nil {
@@ -569,7 +576,7 @@ func (q *Queries) GetWorksBySprint(ctx context.Context, arg GetWorksBySprintPara
 }
 
 const getWorksBySprintWithoutAggregation = `-- name: GetWorksBySprintWithoutAggregation :many
-SELECT id, group_id, sprint_id, name, description, status, assignee_id, creator_id, estimate_hours, story_point, priority, due_date, created_at, updated_at, completed_at
+SELECT id, group_id, sprint_id, name, description, status, assignee_id, creator_id, estimate_hours, story_point, priority, due_date, created_at, updated_at, completed_at, version
 FROM works
 WHERE group_id = $1
 AND sprint_id IS NOT DISTINCT FROM $2
@@ -607,6 +614,7 @@ func (q *Queries) GetWorksBySprintWithoutAggregation(ctx context.Context, arg Ge
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CompletedAt,
+			&i.Version,
 		); err != nil {
 			return nil, err
 		}
@@ -713,8 +721,9 @@ SET
 	story_point = COALESCE($6, story_point),
 	due_date = COALESCE($7, due_date),
 	priority = COALESCE($8, priority),
+	version = version + 1,
 	updated_at = NOW()
-WHERE id = $9
+WHERE id = $9 AND version = $10
 RETURNING
 	id,
 	CASE WHEN $1::text IS NOT NULL THEN name ELSE NULL END AS name,
@@ -725,6 +734,7 @@ RETURNING
 	CASE WHEN $6::int IS NOT NULL THEN story_point ELSE NULL END AS story_point,
 	CASE WHEN $7::date IS NOT NULL THEN due_date ELSE NULL END AS due_date,
 	CASE WHEN $8::text IS NOT NULL THEN priority ELSE NULL END AS priority,
+	version,
 	updated_at
 `
 
@@ -738,6 +748,7 @@ type UpdateWorkParams struct {
 	DueDate     pgtype.Date
 	Priority    pgtype.Text
 	ID          pgtype.UUID
+	Version     int32
 }
 
 type UpdateWorkRow struct {
@@ -750,6 +761,7 @@ type UpdateWorkRow struct {
 	StoryPoint  interface{}
 	DueDate     interface{}
 	Priority    interface{}
+	Version     int32
 	UpdatedAt   pgtype.Timestamptz
 }
 
@@ -764,6 +776,7 @@ func (q *Queries) UpdateWork(ctx context.Context, arg UpdateWorkParams) (UpdateW
 		arg.DueDate,
 		arg.Priority,
 		arg.ID,
+		arg.Version,
 	)
 	var i UpdateWorkRow
 	err := row.Scan(
@@ -776,6 +789,7 @@ func (q *Queries) UpdateWork(ctx context.Context, arg UpdateWorkParams) (UpdateW
 		&i.StoryPoint,
 		&i.DueDate,
 		&i.Priority,
+		&i.Version,
 		&i.UpdatedAt,
 	)
 	return i, err

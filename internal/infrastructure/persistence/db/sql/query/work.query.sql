@@ -43,8 +43,9 @@ SET
 	story_point = COALESCE(sqlc.narg('story_point'), story_point),
 	due_date = COALESCE(sqlc.narg('due_date'), due_date),
 	priority = COALESCE(sqlc.narg('priority'), priority),
+	version = version + 1,
 	updated_at = NOW()
-WHERE id = sqlc.arg('id')
+WHERE id = sqlc.arg('id') AND version = sqlc.arg('version')
 RETURNING
 	id,
 	CASE WHEN sqlc.narg('name')::text IS NOT NULL THEN name ELSE NULL END AS name,
@@ -55,6 +56,7 @@ RETURNING
 	CASE WHEN sqlc.narg('story_point')::int IS NOT NULL THEN story_point ELSE NULL END AS story_point,
 	CASE WHEN sqlc.narg('due_date')::date IS NOT NULL THEN due_date ELSE NULL END AS due_date,
 	CASE WHEN sqlc.narg('priority')::text IS NOT NULL THEN priority ELSE NULL END AS priority,
+	version,
 	updated_at;
 
 -- name: DeleteWork :one
@@ -83,13 +85,14 @@ SELECT
     w.due_date,
     w.created_at,
     w.updated_at,
+	w.version,
     u.email AS assignee_email,
     u.avatar_url AS assignee_avatar_url
 FROM works w
 LEFT JOIN users u ON u.id = w.assignee_id
 WHERE w.group_id = sqlc.arg('group_id')
-AND w.sprint_id IS NOT DISTINCT FROM sqlc.narg('sprint_id')
-AND w.assignee_id IS NOT DISTINCT FROM sqlc.narg('assignee_id')
+AND (sqlc.narg('sprint_id')::uuid IS NULL OR w.sprint_id = sqlc.narg('sprint_id'))
+AND (sqlc.narg('assignee_id')::uuid IS NULL OR w.assignee_id = sqlc.narg('assignee_id'))
 ORDER BY w.updated_at DESC;
 
 -- name: GetWorksBySprintWithoutAggregation :many
@@ -116,6 +119,7 @@ SELECT
 	w.due_date,
 	w.created_at,
 	w.updated_at,
+	w.version,
 	s.name AS sprint_name,
 	u.email AS assignee_email,
 	u.avatar_url AS assignee_avatar_url

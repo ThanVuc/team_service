@@ -192,9 +192,9 @@ func (uc *workUseCase) UpdateWork(ctx context.Context, req *appdto.UpdateWorkReq
 		}, nil
 	}
 
-	var updatedWorkResp *appdto.WorkResponse
+	var updatedWork *appdto.WorkResponse
 	err = uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
-		updatedWorkResp, err = repo.WorkRepository().UpdateWork(ctx, payload.Request)
+		updatedWorkResp, err := repo.WorkRepository().UpdateWork(ctx, payload.Request)
 		if err != nil {
 			return err
 		}
@@ -203,16 +203,23 @@ func (uc *workUseCase) UpdateWork(ctx context.Context, req *appdto.UpdateWorkReq
 			return errorbase.New(errdict.ErrInternal, errorbase.WithDetail("update work returned nil"))
 		}
 
+		updatedWork, err = repo.WorkRepository().GetWorkAggregation(ctx, payload.WorkID)
+		if err != nil {
+			return err
+		}
+
+		if updatedWork == nil {
+			return errorbase.New(errdict.ErrInternal, errorbase.WithDetail("get updated work returned nil"))
+		}
+
 		return nil
 	})
 
 	if err != nil {
-		return nil, err
-	}
-
-	updatedWork, err := uc.workRepo.GetWorkAggregation(ctx, payload.WorkID)
-	if err != nil {
-		return nil, err
+		return &appdto.BaseResponse[appdto.WorkResponse]{
+			Data:  nil,
+			Error: appmapper.ToErrorResponse(err),
+		}, nil
 	}
 
 	// publish work updated notification
