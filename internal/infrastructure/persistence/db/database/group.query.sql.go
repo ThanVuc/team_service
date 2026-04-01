@@ -65,6 +65,7 @@ const countGroupsByOwner = `-- name: CountGroupsByOwner :one
 SELECT COUNT(*) 
 FROM groups
 WHERE owner_id = $1
+AND deleted_at IS NULL
 `
 
 func (q *Queries) CountGroupsByOwner(ctx context.Context, ownerID pgtype.UUID) (int64, error) {
