@@ -23,7 +23,8 @@ RETURNING *;
 -- name: CountGroupsByOwner :one
 SELECT COUNT(*) 
 FROM groups
-WHERE owner_id = $1;
+WHERE owner_id = $1
+AND deleted_at IS NULL;
 
 
 -- name: CreateGroupMember :exec
