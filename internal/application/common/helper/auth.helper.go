@@ -37,7 +37,6 @@ func NewAuthHelper(
 func (h *AuthHelper) RequireRole(ctx context.Context, expectedRole enum.GroupRole) (*appdto.UserWithPermission, errorbase.AppError) {
 	userID := utils.GetUserIDFromOutgoingContext(ctx)
 	groupId := utils.GetGroupIDFromContext(ctx)
-	key := appconstant.CacheUserWithRolePrefix + userID
 
 	if userID == "" {
 		return nil, errorbase.New(errdict.ErrUnauthorized, errorbase.WithDetail("user id is required in context"))
@@ -46,6 +45,8 @@ func (h *AuthHelper) RequireRole(ctx context.Context, expectedRole enum.GroupRol
 	if groupId == "" {
 		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required in context"))
 	}
+
+	key := appconstant.CacheUserWithRolePrefix + userID + ":" + groupId
 
 	var cachedUser appdto.UserWithPermission
 	var cachedUserBytes []byte
