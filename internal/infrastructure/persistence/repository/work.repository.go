@@ -93,16 +93,18 @@ func (r *WorkRepository) UpdateWork(
 	}
 
 	updated, err := r.q.UpdateWork(ctx, database.UpdateWorkParams{
-		Name:        toNullableText(req.Name),
-		Description: toNullableText(req.Description),
-		SprintID:    sprintID,
-		AssigneeID:  assigneeID,
-		Status:      toNullableWorkStatus(req.Status),
-		StoryPoint:  toNullableInt4(req.StoryPoint),
-		DueDate:     toNullableDate(req.DueDate),
-		Priority:    toNullableWorkPriority(req.Priority),
-		ID:          id,
-		Version:     req.Version,
+		Name:          toNullableText(req.Name),
+		Description:   toNullableText(req.Description),
+		SprintID:      sprintID,
+		AssigneeID:    assigneeID,
+		IsUnsetSprint: toNullableBool(req.IsUnsetSprint),
+		IsUnassigned:  toNullableBool(req.IsUnassigned),
+		Status:        toNullableWorkStatus(req.Status),
+		StoryPoint:    toNullableInt4(req.StoryPoint),
+		DueDate:       toNullableDate(req.DueDate),
+		Priority:      toNullableWorkPriority(req.Priority),
+		ID:            id,
+		Version:       req.Version,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

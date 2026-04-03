@@ -357,6 +357,10 @@ func (v *WorkValidator) ValidateUpdateWork(
 	}
 
 	if req.SprintID != nil {
+		if req.IsUnsetSprint != nil {
+			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("provide either sprint id or is_unset_sprint"))
+		}
+
 		sprintID := strings.TrimSpace(*req.SprintID)
 		if sprintID == "" {
 			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("sprint id must not be empty when provided"))
@@ -402,7 +406,17 @@ func (v *WorkValidator) ValidateUpdateWork(
 		req.SprintID = &sprintID
 	}
 
+	if req.IsUnsetSprint != nil {
+		if !*req.IsUnsetSprint {
+			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("is_unset_sprint only accepts true"))
+		}
+	}
+
 	if req.AssigneeID != nil {
+		if req.IsUnassigned != nil {
+			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("provide either assignee id or is_unassigned"))
+		}
+
 		assigneeID := strings.TrimSpace(*req.AssigneeID)
 		if assigneeID == "" {
 			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("assignee id must not be empty when provided"))
@@ -426,6 +440,12 @@ func (v *WorkValidator) ValidateUpdateWork(
 		}
 
 		req.AssigneeID = &assigneeID
+	}
+
+	if req.IsUnassigned != nil {
+		if !*req.IsUnassigned {
+			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("is_unassigned only accepts true"))
+		}
 	}
 
 	if req.StoryPoint != nil {
@@ -873,7 +893,15 @@ func countProvidedWorkUpdateFields(req *appdto.UpdateWorkRequest) int {
 		count++
 	}
 
+	if req.IsUnsetSprint != nil {
+		count++
+	}
+
 	if req.AssigneeID != nil {
+		count++
+	}
+
+	if req.IsUnassigned != nil {
 		count++
 	}
 

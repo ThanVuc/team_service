@@ -70,7 +70,7 @@ func (h *AuthHelper) RequireRole(ctx context.Context, expectedRole enum.GroupRol
 	userBytes, marshalErr := json.Marshal(user)
 	if marshalErr != nil {
 		h.logger.Error(fmt.Sprintf("Failed to marshal user role for cache for user %s: %v", userID, marshalErr))
-	} else if cacheErr := h.cacheRepo.Set(ctx, key, userBytes, 800); cacheErr != nil {
+	} else if cacheErr := h.cacheRepo.Set(ctx, key, userBytes, 300); cacheErr != nil {
 		h.logger.Error(fmt.Sprintf("Failed to set user role in cache for user %s: %v", userID, cacheErr))
 	}
 
