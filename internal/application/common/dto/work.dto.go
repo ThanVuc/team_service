@@ -28,9 +28,11 @@ type UpdateWorkRequest struct {
 
 	Status *enum.WorkStatus
 
-	SprintID *string
+	SprintID      *string
+	IsUnsetSprint *bool
 
-	AssigneeID *string
+	AssigneeID   *string
+	IsUnassigned *bool
 
 	StoryPoint *int32
 

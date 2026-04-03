@@ -40,8 +40,8 @@ func ToListWorksDTO(req *team_service.ListWorksRequest) *appdto.ListWorksRequest
 	}
 
 	return &appdto.ListWorksRequest{
-		SprintID:   req.SprintId,
-		AssigneeID: req.AssigneeId,
+		SprintID:   optionalTrimmedStringPtr(req.SprintId),
+		AssigneeID: optionalTrimmedStringPtr(req.AssigneeId),
 	}
 }
 
@@ -51,16 +51,18 @@ func ToUpdateWorkDTO(req *team_service.UpdateWorkRequest) *appdto.UpdateWorkRequ
 	}
 
 	return &appdto.UpdateWorkRequest{
-		WorkID:      req.Id,
-		Name:        req.Name,
-		Description: req.Description,
-		Status:      optionalWorkStatus(req.Status),
-		SprintID:    req.SprintId,
-		AssigneeID:  req.AssigneeId,
-		StoryPoint:  req.StoryPoint,
-		Priority:    optionalWorkPriority(req.Priority),
-		DueDate:     optionalDateToTime(req.DueDate),
-		Version:     req.Version,
+		WorkID:        req.Id,
+		Name:          req.Name,
+		Description:   req.Description,
+		Status:        optionalWorkStatus(req.Status),
+		SprintID:      req.SprintId,
+		IsUnsetSprint: req.IsUnsetSprint,
+		AssigneeID:    req.AssigneeId,
+		IsUnassigned:  req.IsUnassigned,
+		StoryPoint:    req.StoryPoint,
+		Priority:      optionalWorkPriority(req.Priority),
+		DueDate:       optionalDateToTime(req.DueDate),
+		Version:       req.Version,
 	}
 }
 
@@ -328,19 +330,20 @@ func ToWorkMessage(work *appdto.WorkResponse) *team_service.WorkMessage {
 	}
 
 	return &team_service.WorkMessage{
-		Id:          work.ID,
-		Name:        work.Name,
-		Description: description,
-		Status:      MapWorkStatus(work.Status),
-		Sprint:      ToSimpleSprintMessage(work.Sprint),
-		Assignee:    ToSimpleUserMessage(work.Assignee),
-		StoryPoint:  safeInt32(work.StoryPoint),
-		DueDate:     optionalTimeToDate(work.DueDate),
-		CheckList:   ToChecklistMessage(work.CheckList),
-		Comments:    ToCommentListMessage(work.Comments),
-		CreatedAt:   createdAt,
-		UpdatedAt:   updatedAt,
-		Version:     work.Version,
+		Id:           work.ID,
+		Name:         work.Name,
+		Description:  description,
+		Status:       MapWorkStatus(work.Status),
+		Sprint:       ToSimpleSprintMessage(work.Sprint),
+		Assignee:     ToSimpleUserMessage(work.Assignee),
+		StoryPoint:   safeInt32(work.StoryPoint),
+		WorkPriority: MapWorkPriority(work.Priority),
+		DueDate:      optionalTimeToDate(work.DueDate),
+		CheckList:    ToChecklistMessage(work.CheckList),
+		Comments:     ToCommentListMessage(work.Comments),
+		CreatedAt:    createdAt,
+		UpdatedAt:    updatedAt,
+		Version:      work.Version,
 	}
 }
 
@@ -491,6 +494,19 @@ func safeInt32(v *int32) int32 {
 	}
 
 	return *v
+}
+
+func optionalTrimmedStringPtr(v *string) *string {
+	if v == nil {
+		return nil
+	}
+
+	trimmed := strings.TrimSpace(*v)
+	if trimmed == "" {
+		return nil
+	}
+
+	return &trimmed
 }
 
 func optionalTimeToDate(t *time.Time) *team_service.Date {

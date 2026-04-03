@@ -37,8 +37,16 @@ UPDATE works
 SET
 	name = COALESCE(sqlc.narg('name'), name),
 	description = COALESCE(sqlc.narg('description'), description),
-	sprint_id = COALESCE(sqlc.narg('sprint_id'), sprint_id),
-	assignee_id = COALESCE(sqlc.narg('assignee_id'), assignee_id),
+	sprint_id = CASE
+		WHEN sqlc.narg('is_unset_sprint')::bool = true THEN NULL
+		WHEN sqlc.narg('sprint_id')::uuid IS NOT NULL THEN sqlc.narg('sprint_id')::uuid
+		ELSE sprint_id
+	END,
+	assignee_id = CASE
+		WHEN sqlc.narg('is_unassigned')::bool = true THEN NULL
+		WHEN sqlc.narg('assignee_id')::uuid IS NOT NULL THEN sqlc.narg('assignee_id')::uuid
+		ELSE assignee_id
+	END,
 	status = COALESCE(sqlc.narg('status'), status),
 	story_point = COALESCE(sqlc.narg('story_point'), story_point),
 	due_date = COALESCE(sqlc.narg('due_date'), due_date),
@@ -50,8 +58,16 @@ RETURNING
 	id,
 	CASE WHEN sqlc.narg('name')::text IS NOT NULL THEN name ELSE NULL END AS name,
 	CASE WHEN sqlc.narg('description')::text IS NOT NULL THEN description ELSE NULL END AS description,
-	CASE WHEN sqlc.narg('sprint_id')::uuid IS NOT NULL THEN sprint_id ELSE NULL END AS sprint_id,
-	CASE WHEN sqlc.narg('assignee_id')::uuid IS NOT NULL THEN assignee_id ELSE NULL END AS assignee_id,
+	CASE
+		WHEN sqlc.narg('is_unset_sprint')::bool = true THEN NULL
+		WHEN sqlc.narg('sprint_id')::uuid IS NOT NULL THEN sprint_id
+		ELSE NULL
+	END AS sprint_id,
+	CASE
+		WHEN sqlc.narg('is_unassigned')::bool = true THEN NULL
+		WHEN sqlc.narg('assignee_id')::uuid IS NOT NULL THEN assignee_id
+		ELSE NULL
+	END AS assignee_id,
 	CASE WHEN sqlc.narg('status')::text IS NOT NULL THEN status ELSE NULL END AS status,
 	CASE WHEN sqlc.narg('story_point')::int IS NOT NULL THEN story_point ELSE NULL END AS story_point,
 	CASE WHEN sqlc.narg('due_date')::date IS NOT NULL THEN due_date ELSE NULL END AS due_date,
@@ -91,7 +107,10 @@ SELECT
 FROM works w
 LEFT JOIN users u ON u.id = w.assignee_id
 WHERE w.group_id = sqlc.arg('group_id')
-AND (sqlc.narg('sprint_id')::uuid IS NULL OR w.sprint_id = sqlc.narg('sprint_id'))
+AND (
+	(sqlc.narg('sprint_id')::uuid IS NOT NULL AND w.sprint_id = sqlc.narg('sprint_id'))
+	OR (sqlc.narg('sprint_id')::uuid IS NULL AND w.sprint_id IS NULL)
+)
 AND (sqlc.narg('assignee_id')::uuid IS NULL OR w.assignee_id = sqlc.narg('assignee_id'))
 ORDER BY w.updated_at DESC;
 

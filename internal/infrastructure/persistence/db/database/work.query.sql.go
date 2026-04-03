@@ -506,7 +506,10 @@ SELECT
 FROM works w
 LEFT JOIN users u ON u.id = w.assignee_id
 WHERE w.group_id = $1
-AND ($2::uuid IS NULL OR w.sprint_id = $2)
+AND (
+	($2::uuid IS NOT NULL AND w.sprint_id = $2)
+	OR ($2::uuid IS NULL AND w.sprint_id IS NULL)
+)
 AND ($3::uuid IS NULL OR w.assignee_id = $3)
 ORDER BY w.updated_at DESC
 `
@@ -715,40 +718,58 @@ UPDATE works
 SET
 	name = COALESCE($1, name),
 	description = COALESCE($2, description),
-	sprint_id = COALESCE($3, sprint_id),
-	assignee_id = COALESCE($4, assignee_id),
-	status = COALESCE($5, status),
-	story_point = COALESCE($6, story_point),
-	due_date = COALESCE($7, due_date),
-	priority = COALESCE($8, priority),
+	sprint_id = CASE
+		WHEN $3::bool = true THEN NULL
+		WHEN $4::uuid IS NOT NULL THEN $4::uuid
+		ELSE sprint_id
+	END,
+	assignee_id = CASE
+		WHEN $5::bool = true THEN NULL
+		WHEN $6::uuid IS NOT NULL THEN $6::uuid
+		ELSE assignee_id
+	END,
+	status = COALESCE($7, status),
+	story_point = COALESCE($8, story_point),
+	due_date = COALESCE($9, due_date),
+	priority = COALESCE($10, priority),
 	version = version + 1,
 	updated_at = NOW()
-WHERE id = $9 AND version = $10
+WHERE id = $11 AND version = $12
 RETURNING
 	id,
 	CASE WHEN $1::text IS NOT NULL THEN name ELSE NULL END AS name,
 	CASE WHEN $2::text IS NOT NULL THEN description ELSE NULL END AS description,
-	CASE WHEN $3::uuid IS NOT NULL THEN sprint_id ELSE NULL END AS sprint_id,
-	CASE WHEN $4::uuid IS NOT NULL THEN assignee_id ELSE NULL END AS assignee_id,
-	CASE WHEN $5::text IS NOT NULL THEN status ELSE NULL END AS status,
-	CASE WHEN $6::int IS NOT NULL THEN story_point ELSE NULL END AS story_point,
-	CASE WHEN $7::date IS NOT NULL THEN due_date ELSE NULL END AS due_date,
-	CASE WHEN $8::text IS NOT NULL THEN priority ELSE NULL END AS priority,
+	CASE
+		WHEN $3::bool = true THEN NULL
+		WHEN $4::uuid IS NOT NULL THEN sprint_id
+		ELSE NULL
+	END AS sprint_id,
+	CASE
+		WHEN $5::bool = true THEN NULL
+		WHEN $6::uuid IS NOT NULL THEN assignee_id
+		ELSE NULL
+	END AS assignee_id,
+	CASE WHEN $7::text IS NOT NULL THEN status ELSE NULL END AS status,
+	CASE WHEN $8::int IS NOT NULL THEN story_point ELSE NULL END AS story_point,
+	CASE WHEN $9::date IS NOT NULL THEN due_date ELSE NULL END AS due_date,
+	CASE WHEN $10::text IS NOT NULL THEN priority ELSE NULL END AS priority,
 	version,
 	updated_at
 `
 
 type UpdateWorkParams struct {
-	Name        pgtype.Text
-	Description pgtype.Text
-	SprintID    pgtype.UUID
-	AssigneeID  pgtype.UUID
-	Status      pgtype.Text
-	StoryPoint  pgtype.Int4
-	DueDate     pgtype.Date
-	Priority    pgtype.Text
-	ID          pgtype.UUID
-	Version     int32
+	Name          pgtype.Text
+	Description   pgtype.Text
+	IsUnsetSprint pgtype.Bool
+	SprintID      pgtype.UUID
+	IsUnassigned  pgtype.Bool
+	AssigneeID    pgtype.UUID
+	Status        pgtype.Text
+	StoryPoint    pgtype.Int4
+	DueDate       pgtype.Date
+	Priority      pgtype.Text
+	ID            pgtype.UUID
+	Version       int32
 }
 
 type UpdateWorkRow struct {
@@ -769,7 +790,9 @@ func (q *Queries) UpdateWork(ctx context.Context, arg UpdateWorkParams) (UpdateW
 	row := q.db.QueryRow(ctx, updateWork,
 		arg.Name,
 		arg.Description,
+		arg.IsUnsetSprint,
 		arg.SprintID,
+		arg.IsUnassigned,
 		arg.AssigneeID,
 		arg.Status,
 		arg.StoryPoint,
