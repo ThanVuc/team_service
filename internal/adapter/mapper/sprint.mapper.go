@@ -99,6 +99,33 @@ func ToExportSprintDTO(req *common.IDRequest) *appdto.ExportSprintRequest {
 	}
 }
 
+func ToGenerateSprintDTO(req *team_service.AISprintGenerationRequest) *appdto.GenerateSprintRequest {
+	if req == nil {
+		return nil
+	}
+
+	files := make([]appdto.AISprintGenerationFile, 0, len(req.Files))
+	for _, file := range req.Files {
+		if file == nil {
+			continue
+		}
+
+		files = append(files, appdto.AISprintGenerationFile{
+			ObjectKey: file.ObjectKey,
+			Size:      file.Size,
+		})
+	}
+
+	return &appdto.GenerateSprintRequest{
+		Name:              req.Name,
+		Goal:              req.Goal,
+		StartDate:         req.StartDate,
+		EndDate:           req.EndDate,
+		AdditionalContext: req.AdditionalContext,
+		Files:             files,
+	}
+}
+
 func ToCreateSprintGrpcResponse(resp *appdto.BaseResponse[appdto.SprintResponse]) *team_service.CreateSprintResponse {
 	if resp == nil {
 		return &team_service.CreateSprintResponse{
@@ -268,6 +295,25 @@ func ToExportSprintGrpcResponse(resp *appdto.BaseResponse[appdto.ExportSprintRes
 		Filename:    filename,
 		ContentType: contentType,
 		Error:       ToProtoError(resp.Error),
+	}
+}
+
+func ToGenerateSprintGrpcResponse(resp *appdto.BaseResponse[appdto.GenerateSprintResponse]) *team_service.AISprintGenerationResponse {
+	if resp == nil {
+		return &team_service.AISprintGenerationResponse{
+			Message: "",
+			Error:   ToProtoError(nil),
+		}
+	}
+
+	message := ""
+	if resp.Data != nil {
+		message = resp.Data.Message
+	}
+
+	return &team_service.AISprintGenerationResponse{
+		Message: message,
+		Error:   ToProtoError(resp.Error),
 	}
 }
 

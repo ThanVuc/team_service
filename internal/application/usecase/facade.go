@@ -38,6 +38,8 @@ type (
 		UpdateSprintStatus(ctx context.Context, req *appdto.UpdateSprintStatusRequest) (*appdto.BaseResponse[appdto.UpdateSprintStatusResponse], errorbase.AppError)
 		DeleteSprint(ctx context.Context, req *appdto.DeleteSprintRequest) (*appdto.BaseResponse[appdto.DeleteSprintResponse], errorbase.AppError)
 		ExportSprint(ctx context.Context, req *appdto.ExportSprintRequest) (*appdto.BaseResponse[appdto.ExportSprintResponse], errorbase.AppError)
+		GenerateSprint(ctx context.Context, req *appdto.GenerateSprintRequest) (*appdto.BaseResponse[appdto.GenerateSprintResponse], errorbase.AppError)
+		ConsumeAISprintGenerationResult(ctx context.Context) func(d rabbitmq.Delivery) rabbitmq.Action
 	}
 
 	WorkUseCase interface {
@@ -84,6 +86,8 @@ func NewSprintUseCase(
 	validator *appvalidation.SprintValidator,
 	authHelper *apphelper.AuthHelper,
 	notificationHelper *apphelper.NotificationHelper,
+	aiHelper *apphelper.AIHelper,
+	logger log.LoggerV2,
 ) SprintUseCase {
 	return &sprintUseCase{
 		store:              store,
@@ -95,6 +99,8 @@ func NewSprintUseCase(
 		sprintExportHelper: apphelper.NewSprintExportHelper(),
 		groupRepo:          store.GroupRepository(),
 		notificationHelper: notificationHelper,
+		aiHelper:           aiHelper,
+		logger:             logger,
 	}
 }
 

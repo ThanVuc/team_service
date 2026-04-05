@@ -47,6 +47,20 @@ type ExportSprintRequest struct {
 	SprintID string
 }
 
+type GenerateSprintRequest struct {
+	Name              string                   `json:"name"`
+	Goal              string                   `json:"goal,omitempty"`
+	StartDate         string                   `json:"start_date"`
+	EndDate           string                   `json:"end_date"`
+	AdditionalContext *string                  `json:"additional_context,omitempty"`
+	Files             []AISprintGenerationFile `json:"files,omitempty"`
+}
+
+type AISprintGenerationFile struct {
+	ObjectKey string `json:"object_key"`
+	Size      int64  `json:"size"`
+}
+
 type ListSprintsResponse struct {
 	Sprints []SprintResponse
 	Total   int32
@@ -65,6 +79,60 @@ type ExportSprintResponse struct {
 	FileName    string
 	File        []byte
 	ContentType string
+}
+
+type GenerateSprintResponse struct {
+	Message string
+}
+
+type AISprintGenerationRequestedMessage struct {
+	EventType string                             `json:"event_type"`
+	JobID     string                             `json:"job_id"`
+	GroupID   string                             `json:"group_id"`
+	SenderID  string                             `json:"sender_id"`
+	Payload   AISprintGenerationRequestedPayload `json:"payload"`
+}
+
+type AISprintGenerationResultMessage struct {
+	EventType string                          `json:"event_type"`
+	JobID     string                          `json:"job_id"`
+	GroupID   string                          `json:"group_id"`
+	SenderID  string                          `json:"sender_id"`
+	Payload   AISprintGenerationResultPayload `json:"payload"`
+}
+
+type AISprintGenerationRequestedPayload struct {
+	Sprint            AISprintGenerationSprint `json:"sprint"`
+	Files             []AISprintGenerationFile `json:"files"`
+	AdditionalContext *string                  `json:"additional_context,omitempty"`
+}
+
+type AISprintGenerationResultPayload struct {
+	Status string                   `json:"status"`
+	Sprint AISprintGenerationSprint `json:"sprint"`
+	Tasks  []AISprintGeneratedTask  `json:"tasks"`
+	Error  *AISprintGenerationError `json:"error,omitempty"`
+}
+
+type AISprintGenerationSprint struct {
+	Name      string `json:"name"`
+	Goal      string `json:"goal,omitempty"`
+	StartDate string `json:"start_date"`
+	EndDate   string `json:"end_date"`
+}
+
+type AISprintGeneratedTask struct {
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Priority    *string `json:"priority,omitempty"`
+	StoryPoint  *int    `json:"story_point,omitempty"`
+	DueDate     *string `json:"due_date,omitempty"`
+}
+
+type AISprintGenerationError struct {
+	Code    string  `json:"code"`
+	Message string  `json:"message"`
+	Detail  *string `json:"detail,omitempty"`
 }
 
 type SprintResponse struct {

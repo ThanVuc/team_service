@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
@@ -16,6 +17,10 @@ import (
 	"team_service/internal/domain/entity"
 	"team_service/internal/domain/enum"
 	"team_service/internal/infrastructure/share/utils"
+
+	"github.com/google/uuid"
+	"github.com/thanvuc/go-core-lib/log"
+	"github.com/wagslane/go-rabbitmq"
 )
 
 type sprintUseCase struct {
@@ -28,6 +33,108 @@ type sprintUseCase struct {
 	sprintExportHelper *apphelper.SprintExportHelper
 	groupRepo          irepository.GroupRepository
 	notificationHelper *apphelper.NotificationHelper
+	aiHelper           *apphelper.AIHelper
+	logger             log.LoggerV2
+}
+
+func (uc *sprintUseCase) GenerateSprint(ctx context.Context, req *appdto.GenerateSprintRequest) (*appdto.BaseResponse[appdto.GenerateSprintResponse], errorbase.AppError) {
+	actor, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.GenerateSprintResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	payload, err := uc.validator.ValidateGenerateSprint(ctx, req)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.GenerateSprintResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	err = uc.aiHelper.PublishSprintGenerationRequest(ctx, appdto.AISprintGenerationRequestedMessage{
+		EventType: "SPRINT_GENERATION_REQUESTED",
+		JobID:     uuid.NewString(),
+		GroupID:   payload.GroupID,
+		SenderID:  actor.ID,
+		Payload: appdto.AISprintGenerationRequestedPayload{
+			Sprint: appdto.AISprintGenerationSprint{
+				Name:      payload.Name,
+				Goal:      payload.Goal,
+				StartDate: payload.StartDate,
+				EndDate:   payload.EndDate,
+			},
+			Files:             payload.Files,
+			AdditionalContext: payload.AdditionalContext,
+		},
+	})
+
+	if err != nil {
+		return &appdto.BaseResponse[appdto.GenerateSprintResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
+
+	return &appdto.BaseResponse[appdto.GenerateSprintResponse]{
+		Data:  &appdto.GenerateSprintResponse{Message: "Sprint is generating, please wait"},
+		Error: nil,
+	}, nil
+}
+
+func (uc *sprintUseCase) ConsumeAISprintGenerationResult(ctx context.Context) func(d rabbitmq.Delivery) rabbitmq.Action {
+	return func(d rabbitmq.Delivery) rabbitmq.Action {
+		var message appdto.AISprintGenerationResultMessage
+		if err := json.Unmarshal(d.Body, &message); err != nil {
+			return rabbitmq.NackDiscard
+		}
+
+		if message.Payload.Status != "SUCCESS" {
+			return rabbitmq.Ack
+		}
+
+		notificationMessage := "AI sprint generation completed successfully"
+		if len(message.Payload.Tasks) > 0 {
+			notificationMessage = fmt.Sprintf("AI sprint generation completed with %d tasks", len(message.Payload.Tasks))
+		}
+
+		notificationErr := uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
+			EventType:   appconstant.EventTypeSprintGenerationSuccessful,
+			SenderID:    message.SenderID,
+			ReceiverIDs: []string{},
+			Payload: appdto.TeamNotificationMessagePayload{
+				Title:           appconstant.GetDisplayTitle(appconstant.EventTypeSprintGenerationSuccessful),
+				Message:         notificationMessage,
+				Link:            nil,
+				ImageURL:        nil,
+				CorrelationID:   message.GroupID,
+				CorrelationType: int(appconstant.CorrelationTypeSprint),
+			},
+			Metadata: appdto.TeamNotificationMessageMetadata{
+				IsSentMail:           true,
+				NonExistentReceivers: []string{"sinhhahaha1@gmail.com"},
+			},
+		}, nil)
+		if notificationErr != nil {
+			return rabbitmq.NackDiscard
+		}
+
+		return rabbitmq.Ack
+	}
 }
 
 func (uc *sprintUseCase) CreateSprint(ctx context.Context, req *appdto.CreateSprintRequest) (*appdto.BaseResponse[appdto.SprintResponse], errorbase.AppError) {

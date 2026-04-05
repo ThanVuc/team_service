@@ -43,6 +43,16 @@ type ExportSprintPayload struct {
 	GroupID  string
 }
 
+type GenerateSprintPayload struct {
+	GroupID           string
+	Name              string
+	Goal              string
+	StartDate         string
+	EndDate           string
+	AdditionalContext *string
+	Files             []appdto.AISprintGenerationFile
+}
+
 func NewSprintValidator(
 	sprintRepo irepository.SprintRepository,
 	userRepo irepository.UserRepository,
@@ -487,6 +497,105 @@ func (v *SprintValidator) ValidateExportSprint(
 	return &ExportSprintPayload{
 		SprintID: sprintID,
 		GroupID:  groupID,
+	}, nil
+}
+
+func (v *SprintValidator) ValidateGenerateSprint(
+	ctx context.Context,
+	req *appdto.GenerateSprintRequest,
+) (*GenerateSprintPayload, errorbase.AppError) {
+	if req == nil {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("request is required"))
+	}
+
+	groupID := strings.TrimSpace(utils.GetGroupIDFromContext(ctx))
+	if groupID == "" {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required in context"))
+	}
+
+	if _, err := uuid.Parse(groupID); err != nil {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id in context must be a valid UUID"))
+	}
+
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("sprint name is required"))
+	}
+
+	if len(name) > 255 {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("sprint name must not exceed 255 characters"))
+	}
+
+	goal := strings.TrimSpace(req.Goal)
+	if goal == "" {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("sprint goal is required"))
+	}
+
+	if len(goal) > 1000 {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("sprint goal must not exceed 1000 characters"))
+	}
+
+	startDate := strings.TrimSpace(req.StartDate)
+	if startDate == "" {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("start date is required"))
+	}
+
+	endDate := strings.TrimSpace(req.EndDate)
+	if endDate == "" {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("end date is required"))
+	}
+
+	start, err := time.Parse("2006-01-02", startDate)
+	if err != nil {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("start date must follow YYYY-MM-DD format"))
+	}
+
+	end, err := time.Parse("2006-01-02", endDate)
+	if err != nil {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("end date must follow YYYY-MM-DD format"))
+	}
+
+	if !start.Before(end) {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("end date must be after start date"))
+	}
+
+	var additionalContext *string
+	if req.AdditionalContext != nil {
+		value := strings.TrimSpace(*req.AdditionalContext)
+		if len(value) > 2000 {
+			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("additional context must not exceed 2000 characters"))
+		}
+
+		if value != "" {
+			additionalContext = &value
+		}
+	}
+
+	files := make([]appdto.AISprintGenerationFile, 0, len(req.Files))
+	for _, file := range req.Files {
+		objectKey := strings.TrimSpace(file.ObjectKey)
+		if objectKey == "" {
+			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("file object key is required"))
+		}
+
+		if file.Size <= 0 {
+			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("file size must be greater than 0"))
+		}
+
+		files = append(files, appdto.AISprintGenerationFile{
+			ObjectKey: objectKey,
+			Size:      file.Size,
+		})
+	}
+
+	return &GenerateSprintPayload{
+		GroupID:           groupID,
+		Name:              name,
+		Goal:              goal,
+		StartDate:         startDate,
+		EndDate:           endDate,
+		AdditionalContext: additionalContext,
+		Files:             files,
 	}, nil
 }
 
