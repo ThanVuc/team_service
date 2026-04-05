@@ -162,8 +162,6 @@ func (uc *groupUseCase) ListGroups(ctx context.Context, req *appdto.ListGroupsRe
 		}, nil
 	}
 
-	userId := utils.GetUserIDFromOutgoingContext(ctx)
-	fmt.Printf("ListGroups called for userID: %s", userId)
 	if groups == nil {
 		groups = &appdto.ListGroupsResponse{
 			Items: []appdto.ListGroupItem{},
@@ -693,7 +691,7 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 	}
 
 	invite, err := uc.validator.ValidateCreateInvitation(ctx, req, actor)
-	fmt.Println("invite after validation:", invite)
+
 	if err != nil {
 		return &appdto.BaseResponse[appdto.InviteResponse]{
 			Data: nil,
@@ -712,6 +710,8 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 	}
 
 	var usersID []string
+	var nonExistentReceivers []string
+	isSentMail := false
 	if createdInvite.Email != nil {
 		user, err := uc.userRepo.GetUserByEmail(ctx, *createdInvite.Email)
 		if err != nil {
@@ -719,19 +719,13 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 		}
 		if user != nil {
 			usersID = append(usersID, user.ID)
+			isSentMail = false
+		} else {
+			isSentMail = true
+			nonExistentReceivers = append(nonExistentReceivers, *createdInvite.Email)
 		}
 	}
 
-	if createdInvite == nil {
-		return &appdto.BaseResponse[appdto.InviteResponse]{
-			Data: nil,
-			Error: &appdto.ErrorResponse{
-				Code:    errdict.ErrInternal.Code,
-				Message: errdict.ErrInternal.Title,
-				Detail:  errdict.ErrInternal.Detail,
-			},
-		}, nil
-	}
 	var inviteLink string
 
 	inviteLink = fmt.Sprintf(
@@ -752,8 +746,8 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 			CorrelationType: int(appconstant.CorrelationTypeGroup),
 		},
 		Metadata: appdto.TeamNotificationMessageMetadata{
-			IsSentMail:           false,
-			NonExistentReceivers: []string{},
+			IsSentMail:           isSentMail,
+			NonExistentReceivers: nonExistentReceivers,
 		},
 	}, &appdto.UserWithPermission{
 		ID:                   actor.ID,
