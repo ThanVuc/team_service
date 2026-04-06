@@ -69,3 +69,22 @@ type OwnerDTO struct {
 type DeleteGroupResponse struct {
 	Success bool
 }
+
+type PresignFileItem struct {
+	Index       int
+	ContentType string
+	FileName    string
+}
+
+type GeneratePresignedURLsRequest struct {
+	Files []PresignFileItem
+}
+
+type PresignedFileItem struct {
+	Index      int
+	PresignUrl string
+}
+
+type GeneratePresignedURLsResponse struct {
+	Files []PresignedFileItem
+}

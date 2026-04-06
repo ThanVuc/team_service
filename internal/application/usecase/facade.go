@@ -10,6 +10,7 @@ import (
 	"team_service/proto/common"
 
 	"github.com/thanvuc/go-core-lib/log"
+	"github.com/thanvuc/go-core-lib/storage"
 	"github.com/wagslane/go-rabbitmq"
 )
 
@@ -27,6 +28,7 @@ type (
 		RemoveMember(ctx context.Context, req *appdto.RemoveMemberRequest) (*appdto.BaseResponse[appdto.RemoveMemberResponse], errorbase.AppError)
 		CreateInvite(ctx context.Context, req *appdto.CreateInviteRequest) (*appdto.BaseResponse[appdto.InviteResponse], errorbase.AppError)
 		AcceptInvite(ctx context.Context, req *appdto.AcceptInviteRequest) (*appdto.BaseResponse[appdto.AcceptInviteResponse], errorbase.AppError)
+		GeneratePresignedURLs(ctx context.Context, req *appdto.GeneratePresignedURLsRequest) (*appdto.BaseResponse[appdto.GeneratePresignedURLsResponse], errorbase.AppError)
 	}
 
 	SprintUseCase interface {
@@ -69,6 +71,7 @@ func NewGroupUseCase(
 	validator *appvalidation.GroupValidator,
 	authHelper *apphelper.AuthHelper,
 	notificationHelper *apphelper.NotificationHelper,
+	r2Client *storage.R2Client,
 ) GroupUseCase {
 	return &groupUseCase{
 		store:              store,
@@ -77,6 +80,7 @@ func NewGroupUseCase(
 		validator:          validator,
 		authHelper:         authHelper,
 		notificationHelper: notificationHelper,
+		r2Client:           r2Client,
 	}
 }
 
