@@ -6,6 +6,7 @@ type Configuration struct {
 	Log      Log      `mapstructure:"log" json:"log" yaml:"log"`
 	RabbitMQ RabbitMQ `mapstructure:"rabbitmq" json:"rabbitmq" yaml:"rabbitmq"`
 	Postgres Postgres `mapstructure:"postgres" json:"postgres" yaml:"postgres"`
+	R2       R2       `mapstructure:"r2" json:"r2" yaml:"r2"`
 }
 
 type Redis struct {
@@ -47,4 +48,14 @@ type Postgres struct {
 	MaxOpenConns    int    `mapstructure:"max_open_conns" json:"max_open_conns" yaml:"max_open_conns"`
 	MaxLifetime     int    `mapstructure:"conn_max_lifetime" json:"conn_max_lifetime" yaml:"conn_max_lifetime"`    // in seconds
 	ConnMaxIdleTime int    `mapstructure:"conn_max_idle_time" json:"conn_max_idle_time" yaml:"conn_max_idle_time"` // in seconds
+}
+
+type R2 struct {
+	AccountID       string `mapstructure:"account_id" json:"account_id" yaml:"account_id"`
+	Endpoint        string `mapstructure:"endpoint" json:"endpoint" yaml:"endpoint"`
+	AccessKeyID     string `mapstructure:"access_key_id" json:"access_key_id" yaml:"access_key_id"`
+	SecrecAccessKey string `mapstructure:"secret_access_key" json:"secret_access_key" yaml:"secret_access_key"`
+	BucketName      string `mapstructure:"bucket" json:"bucket" yaml:"bucket"`
+	UseSSL          bool   `mapstructure:"use_ssl" json:"use_ssl" yaml:"use_ssl"`
+	PublicURL       string `mapstructure:"public_url" json:"public_url" yaml:"public_url"`
 }

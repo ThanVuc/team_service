@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"team_service/internal/adapter/constant/r2"
 	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
 	apphelper "team_service/internal/application/common/helper"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/thanvuc/go-core-lib/storage"
 )
 
 type groupUseCase struct {
@@ -28,6 +30,7 @@ type groupUseCase struct {
 	validator          *appvalidation.GroupValidator
 	authHelper         *apphelper.AuthHelper
 	notificationHelper *apphelper.NotificationHelper
+	r2Client           *storage.R2Client
 }
 
 func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError) {
@@ -870,6 +873,42 @@ func (uc *groupUseCase) AcceptInvite(ctx context.Context, req *appdto.AcceptInvi
 
 	return &appdto.BaseResponse[appdto.AcceptInviteResponse]{
 		Data:  created,
+		Error: nil,
+	}, nil
+}
+
+func (uc *groupUseCase) GeneratePresignedURLs(ctx context.Context, req *appdto.GeneratePresignedURLsRequest) (*appdto.BaseResponse[appdto.GeneratePresignedURLsResponse], errorbase.AppError) {
+	err := uc.validator.ValidatePresignURLsRequest(ctx, req)
+	if err != nil {
+		fmt.Println("Validation error in GeneratePresignedURLs:", err)
+		return &appdto.BaseResponse[appdto.GeneratePresignedURLsResponse]{
+			Data:  nil,
+			Error: appmapper.ToErrorResponse(err),
+		}, nil
+	}
+
+
+	result := make([]appdto.PresignedFileItem, len(req.Files))
+	for i, file := range req.Files {
+		resp, err := uc.r2Client.GeneratePresignedURL(
+			ctx,
+			r2.PresignURLs(file.ContentType),
+		)
+		if err != nil {
+			return nil, errorbase.Wrap(err, errdict.ErrInternal, errorbase.WithDetail("failed to generate presigned url"))
+		}
+
+		result[i] = appdto.PresignedFileItem{
+			Index:      file.Index,
+			PresignUrl: resp.PresignedURL,
+		}
+	}
+
+
+	return &appdto.BaseResponse[appdto.GeneratePresignedURLsResponse]{
+		Data: &appdto.GeneratePresignedURLsResponse{
+			Files: result,
+		},
 		Error: nil,
 	}, nil
 }

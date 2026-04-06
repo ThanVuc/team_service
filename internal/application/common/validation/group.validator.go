@@ -436,3 +436,18 @@ func (v *GroupValidator) ValidateAcceptInvitation(ctx context.Context, req *appd
 
 	return invite, user, nil
 }
+
+func (v *GroupValidator) ValidatePresignURLsRequest(ctx context.Context, req *appdto.GeneratePresignedURLsRequest) errorbase.AppError {
+	if len(req.Files) == 0 {
+		return errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("at least one file is required"))
+	}
+
+	for i, file := range req.Files {
+		if file.ContentType == "" {
+			return errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("content type is required for file at index "+string(i)))
+		}
+	}
+
+	return nil
+
+}
