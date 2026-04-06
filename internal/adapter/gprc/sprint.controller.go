@@ -114,3 +114,14 @@ func (c *SprintController) ExportSprint(ctx context.Context, req *common.IDReque
 
 	return adapermapper.ToExportSprintGrpcResponse(resp), nil
 }
+
+func (c *SprintController) DeleteDraftSprints(ctx context.Context, req *common.IDRequest) (*team_service.DeleteDraftSprintsResponse, error) {
+	deleteDraftSprintReq := adapermapper.ToDeleteDraftSprintDTO(req)
+
+	resp, err := utils.WithSafePanic(ctx, c.logger, deleteDraftSprintReq, c.sprintUseCase.DeleteDraftSprint)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapermapper.ToDeleteDraftSprintGrpcResponse(resp), nil
+}
