@@ -152,3 +152,14 @@ func (c *GroupController) AcceptInvite(ctx context.Context, req *team_service.Ac
 
 	return adapermapper.ToAcceptInviteGrpcResponse(resp), nil
 }
+
+func (c *GroupController) GeneratePresignedURLs(ctx context.Context, req *team_service.GeneratePresignedURLsRequest) (*team_service.GeneratePresignedURLsResponse, error) {
+	generatePresignedURLsReq := adapermapper.ToGeneratePresignedURLsRequest(req)
+
+	resp, err := utils.WithSafePanic(ctx, c.logger, generatePresignedURLsReq, c.groupUseCase.GeneratePresignedURLs)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapermapper.ToGeneratePresignedURLsGrpcResponse(resp), nil
+}

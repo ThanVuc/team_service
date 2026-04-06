@@ -317,3 +317,46 @@ func ToGetSimpleUserByGroupIDGrpcResponse(
 		Error: ToProtoError(resp.Error),
 	}
 }
+
+func ToGeneratePresignedURLsRequest(req *team_service.GeneratePresignedURLsRequest) *appdto.GeneratePresignedURLsRequest {
+	if req == nil {
+		return nil
+	}
+
+	var file []appdto.PresignFileItem
+	for _, item := range req.Files {
+		file = append(file, appdto.PresignFileItem{
+			Index:       int(item.Index),
+			FileName:    item.FileName,
+			ContentType: item.ContentType,
+		})
+	}
+
+	return &appdto.GeneratePresignedURLsRequest{
+		Files: file,
+	}
+}
+
+func ToGeneratePresignedURLsGrpcResponse(
+	resp *appdto.BaseResponse[appdto.GeneratePresignedURLsResponse],
+) *team_service.GeneratePresignedURLsResponse {
+	if resp == nil || resp.Data == nil {
+		return &team_service.GeneratePresignedURLsResponse{
+			Files: nil,
+			Error: ToProtoError(nil),
+		}
+	}
+
+	var urls []*team_service.PresignedFileItem
+	for _, item := range resp.Data.Files {
+		urls = append(urls, &team_service.PresignedFileItem{
+			Index:        int32(item.Index),
+			PresignedUrl: item.PresignUrl,
+		})
+	}
+
+	return &team_service.GeneratePresignedURLsResponse{
+		Files: urls,
+		Error: ToProtoError(resp.Error),
+	}
+}
