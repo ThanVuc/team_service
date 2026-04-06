@@ -2,7 +2,6 @@ package grpccontroller
 
 import (
 	"context"
-	"fmt"
 	adapermapper "team_service/internal/adapter/mapper"
 	"team_service/internal/application/usecase"
 	"team_service/internal/infrastructure/share/utils"
@@ -134,7 +133,6 @@ func (c *GroupController) RemoveMember(ctx context.Context, req *team_service.Re
 
 func (c *GroupController) CreateInvite(ctx context.Context, req *team_service.CreateInviteRequest) (*team_service.CreateInviteResponse, error) {
 	createInviteReq := adapermapper.ToCreateInviteRequest(req)
-	fmt.Printf("CreateInviteReq: %+v\n", createInviteReq)
 
 	resp, err := utils.WithSafePanic(ctx, c.logger, createInviteReq, c.groupUseCase.CreateInvite)
 	if err != nil {

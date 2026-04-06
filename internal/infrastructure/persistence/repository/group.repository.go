@@ -178,7 +178,6 @@ func (r *GroupRepository) GetGroupsByUserID(
 	items := make([]appdto.ListGroupItem, 0, len(rows))
 	for _, row := range rows {
 		owner, err := r.q.GetOwnerByGroupID(ctx, row.ID)
-		fmt.Println("Owner for groupID", row.ID.String(), "is", owner) // Log the owner information for debugging
 		if err != nil {
 			return nil, errorbase.Wrap(
 				err,
