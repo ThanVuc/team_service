@@ -732,7 +732,7 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 	var inviteLink string
 
 	inviteLink = fmt.Sprintf(
-		"https://www.schedulr.site/api/v1/ts/invitation/acceptance?code=%s",
+		"https://schedulr.site/te/invite?code=%s",
 		createdInvite.Token,
 	)
 
@@ -887,7 +887,6 @@ func (uc *groupUseCase) GeneratePresignedURLs(ctx context.Context, req *appdto.G
 		}, nil
 	}
 
-
 	result := make([]appdto.PresignedFileItem, len(req.Files))
 	for i, file := range req.Files {
 		resp, err := uc.r2Client.GeneratePresignedURL(
@@ -903,7 +902,6 @@ func (uc *groupUseCase) GeneratePresignedURLs(ctx context.Context, req *appdto.G
 			PresignUrl: resp.PresignedURL,
 		}
 	}
-
 
 	return &appdto.BaseResponse[appdto.GeneratePresignedURLsResponse]{
 		Data: &appdto.GeneratePresignedURLsResponse{
