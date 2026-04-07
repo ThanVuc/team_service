@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	adapterdomain "team_service/internal/adapter/constant/domain"
 	"team_service/internal/adapter/constant/r2"
 	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
@@ -837,7 +838,7 @@ func (uc *groupUseCase) AcceptInvite(ctx context.Context, req *appdto.AcceptInvi
 		return nil, err
 	}
 
-	link = fmt.Sprintf("%s/groups/%s", domain, invite.GroupID)
+	link = fmt.Sprintf("%s/group/%s", adapterdomain.Domain, invite.GroupID)
 
 	created = &appdto.AcceptInviteResponse{
 		Location: link,
