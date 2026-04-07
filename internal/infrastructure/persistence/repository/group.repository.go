@@ -166,7 +166,6 @@ func (r *GroupRepository) GetGroupsByUserID(
 	}
 
 	rows, err := r.q.GetGroupsByUserID(ctx, userUUID)
-	fmt.Println("GetGroupsByUserID rows:", rows) // Log the retrieved rows for debugging
 	if err != nil {
 		return nil, errorbase.Wrap(
 			err,
