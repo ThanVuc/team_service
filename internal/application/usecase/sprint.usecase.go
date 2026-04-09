@@ -241,7 +241,7 @@ func (uc *sprintUseCase) ConsumeAISprintGenerationResult(ctx context.Context) fu
 
 		var link *string
 		if origin != "" {
-			generatedLink := fmt.Sprintf("%s/groups/%s/sprints/%s", origin, message.GroupID, createdSprint.ID)
+			generatedLink := fmt.Sprintf("%s/groups/%s?tab=workboard&sprint_id=%s", origin, message.GroupID, createdSprint.ID)
 			link = utils.Ptr(generatedLink)
 		}
 
@@ -901,69 +901,69 @@ func toSprintExportUsers(resp *appdto.ListMembersResponse) []*entity.User {
 }
 
 func (uc *sprintUseCase) DeleteDraftSprint(ctx context.Context, req *appdto.DeleteSprintRequest) (*appdto.BaseResponse[appdto.DeleteSprintResponse], errorbase.AppError) {
-    actor, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
-    if err != nil {
-        return &appdto.BaseResponse[appdto.DeleteSprintResponse]{
-            Data: nil,
-            Error: &appdto.ErrorResponse{
-                Code:    err.ErrorInfo().Code,
-                Message: err.ErrorInfo().Title,
-                Detail:  err.ErrorInfo().Detail,
-            },
-        }, nil
-    }
+	actor, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.DeleteSprintResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
 
-    payload, err := uc.validator.ValidateDeleteSprint(ctx, req)
-    if err != nil {
-        return &appdto.BaseResponse[appdto.DeleteSprintResponse]{
-            Data: nil,
-            Error: &appdto.ErrorResponse{
-                Code:    err.ErrorInfo().Code,
-                Message: err.ErrorInfo().Title,
-                Detail:  err.ErrorInfo().Detail,
-            },
-        }, nil
-    }
+	payload, err := uc.validator.ValidateDeleteSprint(ctx, req)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.DeleteSprintResponse]{
+			Data: nil,
+			Error: &appdto.ErrorResponse{
+				Code:    err.ErrorInfo().Code,
+				Message: err.ErrorInfo().Title,
+				Detail:  err.ErrorInfo().Detail,
+			},
+		}, nil
+	}
 
-    sprint, _ := uc.sprintRepo.GetSprintByID(ctx, payload.SprintID)
+	sprint, _ := uc.sprintRepo.GetSprintByID(ctx, payload.SprintID)
 
-    err = uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
-        return repo.SprintRepository().DeleteDraftSprintBySprintID(ctx, payload.SprintID)
-    })
-    if err != nil {
-        return nil, err
-    }
+	err = uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
+		return repo.SprintRepository().DeleteDraftSprintBySprintID(ctx, payload.SprintID)
+	})
+	if err != nil {
+		return nil, err
+	}
 
-    // publish delete notification
-    domain := utils.GetBaseURLFromIncomingContext(ctx)
-    if domain == "" {
-        domain = "https://www.schedulr.site"
-    }
-    link := fmt.Sprintf("%s/groups/%s/sprints", domain, sprint.GroupID)
-    _ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
-        EventType:   appconstant.EventTypeSprintDeleted,
-        SenderID:    actor.ID,
-        ReceiverIDs: []string{actor.ID},
-        Payload: appdto.TeamNotificationMessagePayload{
-            Title:           appconstant.GetDisplayTitle(appconstant.EventTypeSprintDeleted),
-            Message:         fmt.Sprintf("Sprint %s đã bị xóa", sprint.Name),
-            Link:            utils.Ptr(link),
-            ImageURL:        nil,
-            CorrelationID:   sprint.GroupID,
-            CorrelationType: int(appconstant.CorrelationTypeSprint),
-        },
-        Metadata: appdto.TeamNotificationMessageMetadata{
-            IsSentMail:           false,
-            NonExistentReceivers: []string{},
-        },
-    }, &appdto.UserWithPermission{
-        ID:                   actor.ID,
-        HasEmailNotification: actor.HasEmailNotification,
-        HasPushNotification:  actor.HasPushNotification,
-    })
+	// publish delete notification
+	domain := utils.GetBaseURLFromIncomingContext(ctx)
+	if domain == "" {
+		domain = "https://www.schedulr.site"
+	}
+	link := fmt.Sprintf("%s/groups/%s/sprints", domain, sprint.GroupID)
+	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
+		EventType:   appconstant.EventTypeSprintDeleted,
+		SenderID:    actor.ID,
+		ReceiverIDs: []string{actor.ID},
+		Payload: appdto.TeamNotificationMessagePayload{
+			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeSprintDeleted),
+			Message:         fmt.Sprintf("Sprint %s đã bị xóa", sprint.Name),
+			Link:            utils.Ptr(link),
+			ImageURL:        nil,
+			CorrelationID:   sprint.GroupID,
+			CorrelationType: int(appconstant.CorrelationTypeSprint),
+		},
+		Metadata: appdto.TeamNotificationMessageMetadata{
+			IsSentMail:           false,
+			NonExistentReceivers: []string{},
+		},
+	}, &appdto.UserWithPermission{
+		ID:                   actor.ID,
+		HasEmailNotification: actor.HasEmailNotification,
+		HasPushNotification:  actor.HasPushNotification,
+	})
 
-    return &appdto.BaseResponse[appdto.DeleteSprintResponse]{
-        Data:  &appdto.DeleteSprintResponse{Success: true},
-        Error: nil,
-    }, nil
+	return &appdto.BaseResponse[appdto.DeleteSprintResponse]{
+		Data:  &appdto.DeleteSprintResponse{Success: true},
+		Error: nil,
+	}, nil
 }
