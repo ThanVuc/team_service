@@ -20,7 +20,8 @@ type Dependency struct {
 	UserController   *grpccontroller.UserController
 
 	// Messaging Handlers
-	AuthHandler *adaptermessaginghandler.AuthHandler
+	AuthHandler               *adaptermessaginghandler.AuthHandler
+	AISprintGenerationHandler *adaptermessaginghandler.AISprintGenerationHandler
 }
 
 func NewDependency(
@@ -67,7 +68,14 @@ func (d *Dependency) Start(ctx context.Context) error {
 		d.app.UserUseCase,
 	)
 
+	d.AISprintGenerationHandler = adaptermessaginghandler.NewAISprintGenerationHandler(
+		d.infra.GetLogger(),
+		d.infra.GetEventBus(),
+		d.app.SprintUseCase,
+	)
+
 	go d.AuthHandler.Handle(ctx)
+	go d.AISprintGenerationHandler.Handle(ctx)
 
 	return nil
 }

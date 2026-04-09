@@ -27,6 +27,7 @@ var (
 		TEAM,
 		EXCHANGE,
 	))
+	AI_TEAM_EXCHANGE eventbus.ExchangeName = "ai_team_exchange"
 )
 
 // ==========Routing key==========
@@ -37,4 +38,6 @@ var (
 		NOTIFICATION_SERVICE,
 		TEAM,
 	)
+	AI_TEAM_SPRINT_GENERATION_ROUTING_KEY        = "ai_team_sprint-generation"
+	TEAM_AI_SPRINT_GENERATION_RESULT_ROUTING_KEY = "team_ai_sprint-generation-result"
 )

@@ -64,7 +64,7 @@ func (h *AuthHelper) RequireRole(ctx context.Context, expectedRole enum.GroupRol
 
 	user, err := h.userRepo.GetUserWithPermissionByID(ctx, groupId, userID)
 	if err != nil {
-		return nil, err
+		return nil, errorbase.New(errdict.ErrUnauthorized, errorbase.WithDetail("User not found"))
 	}
 
 	userBytes, marshalErr := json.Marshal(user)

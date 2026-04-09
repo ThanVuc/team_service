@@ -115,6 +115,17 @@ func (c *SprintController) ExportSprint(ctx context.Context, req *common.IDReque
 	return adapermapper.ToExportSprintGrpcResponse(resp), nil
 }
 
+func (c *SprintController) GenerateSprint(ctx context.Context, req *team_service.AISprintGenerationRequest) (*team_service.AISprintGenerationResponse, error) {
+	generateSprintReq := adapermapper.ToGenerateSprintDTO(req)
+
+	resp, err := utils.WithSafePanic(ctx, c.logger, generateSprintReq, c.sprintUseCase.GenerateSprint)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapermapper.ToGenerateSprintGrpcResponse(resp), nil
+}
+
 func (c *SprintController) DeleteDraftSprints(ctx context.Context, req *common.IDRequest) (*team_service.DeleteDraftSprintsResponse, error) {
 	deleteDraftSprintReq := adapermapper.ToDeleteDraftSprintDTO(req)
 

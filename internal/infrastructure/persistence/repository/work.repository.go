@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	appdto "team_service/internal/application/common/dto"
@@ -989,4 +990,155 @@ func (r *WorkRepository) UnassignWorksByMember(ctx context.Context, groupID stri
 	}
 
 	return nil
+}
+
+func (r *WorkRepository) CreateWorks(ctx context.Context, works []*entity.Work) ([]*entity.Work, errorbase.AppError) {
+	if len(works) == 0 {
+		return make([]*entity.Work, 0), nil
+	}
+
+	first := works[0]
+	if first == nil {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("work at index 0 is nil"))
+	}
+
+	groupID := strings.TrimSpace(first.GroupID)
+	creatorID := strings.TrimSpace(first.CreatorID)
+	sprintID := strings.TrimSpace(first.SprintID)
+
+	if groupID == "" {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required"))
+	}
+
+	if creatorID == "" {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("creator id is required"))
+	}
+
+	groupUUID, appErr := parseUUID(groupID, "group id")
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	creatorUUID, appErr := parseUUID(creatorID, "creator id")
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	sprintUUID, appErr := parseOptionalUUIDString(sprintID, "sprint id")
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	ids := make([]pgtype.UUID, 0, len(works))
+	names := make([]string, 0, len(works))
+	descriptions := make([]string, 0, len(works))
+	storyPoints := make([]int32, 0, len(works))
+	priorities := make([]string, 0, len(works))
+	dueDates := make([]pgtype.Date, 0, len(works))
+	insertedIDSet := make(map[string]struct{}, len(works))
+
+	for idx, work := range works {
+		if work == nil {
+			return nil, errorbase.New(
+				errdict.ErrBadRequest,
+				errorbase.WithDetail(fmt.Sprintf("work at index %d is nil", idx)),
+			)
+		}
+
+		if strings.TrimSpace(work.GroupID) != groupID {
+			return nil, errorbase.New(
+				errdict.ErrBadRequest,
+				errorbase.WithDetail("all works must have the same group id for bulk insert"),
+			)
+		}
+
+		if strings.TrimSpace(work.CreatorID) != creatorID {
+			return nil, errorbase.New(
+				errdict.ErrBadRequest,
+				errorbase.WithDetail("all works must have the same creator id for bulk insert"),
+			)
+		}
+
+		if strings.TrimSpace(work.SprintID) != sprintID {
+			return nil, errorbase.New(
+				errdict.ErrBadRequest,
+				errorbase.WithDetail("all works must have the same sprint id for bulk insert"),
+			)
+		}
+
+		id, idErr := parseUUID(work.ID, "work id")
+		if idErr != nil {
+			return nil, idErr
+		}
+
+		name := strings.TrimSpace(work.Name)
+		if name == "" {
+			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("work name is required"))
+		}
+
+		ids = append(ids, id)
+		names = append(names, name)
+		insertedIDSet[id.String()] = struct{}{}
+
+		description := ""
+		if work.Description != nil {
+			description = *work.Description
+		}
+		descriptions = append(descriptions, description)
+
+		storyPoint := int32(0)
+		if work.StoryPoint != nil {
+			storyPoint = *work.StoryPoint
+		}
+		storyPoints = append(storyPoints, storyPoint)
+
+		priority := enum.WorkPriorityMedium
+		if work.Priority != nil && work.Priority.IsValid() {
+			priority = *work.Priority
+		}
+		priorities = append(priorities, string(priority))
+
+		dueDate := pgtype.Date{}
+		if work.DueDate != nil {
+			dueDate = pgtype.Date{Time: *work.DueDate, Valid: true}
+		}
+		dueDates = append(dueDates, dueDate)
+	}
+
+	err := r.q.CreateWorks(ctx, database.CreateWorksParams{
+		Column1:   ids,
+		GroupID:   groupUUID,
+		SprintID:  sprintUUID,
+		Column4:   names,
+		Column5:   descriptions,
+		CreatorID: creatorUUID,
+		Column7:   storyPoints,
+		Column8:   priorities,
+		Column9:   dueDates,
+	})
+	if err != nil {
+		return nil, errorbase.Wrap(err, errdict.ErrInternal, errorbase.WithDetail("failed to bulk create works"))
+	}
+
+	rows, appErr := r.GetWorksBySprintWithoutAggregation(ctx, groupID, sprintID)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	createdWorks := make([]*entity.Work, 0, len(works))
+	for _, row := range rows {
+		if row == nil {
+			continue
+		}
+
+		if _, ok := insertedIDSet[row.ID]; ok {
+			createdWorks = append(createdWorks, row)
+		}
+	}
+
+	if len(createdWorks) != len(works) {
+		return nil, errorbase.New(errdict.ErrInternal, errorbase.WithDetail("failed to load created works after bulk insert"))
+	}
+
+	return createdWorks, nil
 }
