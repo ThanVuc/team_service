@@ -163,3 +163,14 @@ func (c *GroupController) GeneratePresignedURLs(ctx context.Context, req *team_s
 
 	return adapermapper.ToGeneratePresignedURLsGrpcResponse(resp), nil
 }
+
+func (c *GroupController) LeaveGroup(ctx context.Context, req *team_service.LeaveGroupRequest) (*team_service.LeaveGroupResponse, error) {
+	leaveGroupReq := adapermapper.ToLeaveGroupRequest(req)
+
+	resp, err := utils.WithSafePanic(ctx, c.logger, leaveGroupReq, c.groupUseCase.LeaveGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapermapper.ToLeaveGroupGrpcResponse(resp), nil
+}

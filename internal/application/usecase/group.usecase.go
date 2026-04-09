@@ -94,12 +94,7 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroup
 		1,
 	)
 
-	domain := utils.GetBaseURLFromIncomingContext(ctx)
-	if domain == "" {
-		domain = "https://www.schedulr.site" // fallback chuẩn hơn
-	}
-
-	link := fmt.Sprintf("%s/groups/%s", domain, group.ID)
+	link := fmt.Sprintf("%s/groups/%s", adapterdomain.Domain, group.ID)
 
 	uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeGroupCreated,
@@ -189,7 +184,7 @@ func (uc *groupUseCase) GetGroup(ctx context.Context, req *appdto.GetGroupReques
 	}
 
 	// validate request and existence
-	err = uc.validator.ValidateGetListGroupMembers(ctx, &appdto.ListMembersRequest{GroupID: req.GroupID}, actor)
+	err = uc.validator.ValidateGetGroup(ctx, req, actor)
 	if err != nil {
 		return &appdto.BaseResponse[appdto.GroupResponse]{
 			Data:  nil,
@@ -307,11 +302,7 @@ func (uc *groupUseCase) UpdateGroup(ctx context.Context, req *appdto.UpdateGroup
 		return nil, err
 	}
 
-	domain := utils.GetBaseURLFromIncomingContext(ctx)
-	if domain == "" {
-		domain = "https://www.schedulr.site"
-	}
-	link := fmt.Sprintf("%s/groups/%s", domain, group.ID)
+	link := fmt.Sprintf("%s/groups/%s", adapterdomain.Domain, group.ID)
 
 	uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeGroupUpdated,
@@ -398,11 +389,7 @@ func (uc *groupUseCase) DeleteGroup(ctx context.Context, req *appdto.DeleteGroup
 		return nil, err
 	}
 
-	domain := utils.GetBaseURLFromIncomingContext(ctx)
-	if domain == "" {
-		domain = "https://www.schedulr.site"
-	}
-	link := fmt.Sprintf("%s/groups/", domain)
+	link := fmt.Sprintf("%s/groups/", adapterdomain.Domain)
 
 	var usersID []string
 	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, req.GroupID)
@@ -565,11 +552,7 @@ func (uc *groupUseCase) UpdateMemberRole(ctx context.Context, req *appdto.Update
 		return nil, err
 	}
 
-	domain := utils.GetBaseURLFromIncomingContext(ctx)
-	if domain == "" {
-		domain = "https://www.schedulr.site"
-	}
-	link := fmt.Sprintf("%s/groups/%s", domain, req.GroupID)
+	link := fmt.Sprintf("%s/groups/%s", adapterdomain.Domain, req.GroupID)
 
 	var usersID []string
 	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, req.GroupID)
@@ -645,11 +628,7 @@ func (uc *groupUseCase) RemoveMember(ctx context.Context, req *appdto.RemoveMemb
 		return nil, err
 	}
 
-	domain := utils.GetBaseURLFromIncomingContext(ctx)
-	if domain == "" {
-		domain = "https://www.schedulr.site"
-	}
-	link := fmt.Sprintf("%s/groups/%s", domain, req.GroupID)
+	link := fmt.Sprintf("%s/groups/%s", adapterdomain.Domain, req.GroupID)
 
 	var usersID []string
 	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, req.GroupID)
@@ -877,7 +856,6 @@ func (uc *groupUseCase) AcceptInvite(ctx context.Context, req *appdto.AcceptInvi
 		Error: nil,
 	}, nil
 }
-
 func (uc *groupUseCase) GeneratePresignedURLs(ctx context.Context, req *appdto.GeneratePresignedURLsRequest) (*appdto.BaseResponse[appdto.GeneratePresignedURLsResponse], errorbase.AppError) {
 	err := uc.validator.ValidatePresignURLsRequest(ctx, req)
 	if err != nil {
@@ -892,7 +870,7 @@ func (uc *groupUseCase) GeneratePresignedURLs(ctx context.Context, req *appdto.G
 	for i, file := range req.Files {
 		resp, err := uc.r2Client.GeneratePresignedURL(
 			ctx,
-			r2.PresignURLs(file.ContentType),
+			r2.PresignURLs(file.ContentType, file.FileName),
 		)
 		if err != nil {
 			return nil, errorbase.Wrap(err, errdict.ErrInternal, errorbase.WithDetail("failed to generate presigned url"))
@@ -908,6 +886,87 @@ func (uc *groupUseCase) GeneratePresignedURLs(ctx context.Context, req *appdto.G
 		Data: &appdto.GeneratePresignedURLsResponse{
 			Files: result,
 		},
+		Error: nil,
+	}, nil
+}
+
+func (uc *groupUseCase) LeaveGroup(ctx context.Context, req *appdto.LeaveGroupRequest) (*appdto.BaseResponse[appdto.LeaveGroupResponse], errorbase.AppError) {
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
+	actor, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleMember)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.LeaveGroupResponse]{
+			Data:  nil,
+			Error: appmapper.ToErrorResponse(err),
+		}, nil
+	}
+
+	user, err := uc.validator.ValidateLeaveGroup(ctx, req)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.LeaveGroupResponse]{
+			Data:  nil,
+			Error: appmapper.ToErrorResponse(err),
+		}, nil
+	}
+
+	var deleted *appdto.LeaveGroupResponse
+	err = uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
+		err = repo.WorkRepository().UnassignWorksByMember(ctx, req.GroupID, userID)
+		if err != nil {
+			return err
+		}
+
+		err = repo.GroupRepository().RemoveMember(ctx, req.GroupID, userID)
+		if err != nil {
+			return err
+		}
+
+		deleted = &appdto.LeaveGroupResponse{
+			Success: true,
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	domain := utils.GetBaseURLFromIncomingContext(ctx)
+	if domain == "" {
+		domain = adapterdomain.Domain
+	}
+	link := fmt.Sprintf("%s/groups/%s", domain, req.GroupID)
+
+	var usersID []string
+	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, req.GroupID)
+	if err != nil {
+		return nil, err
+	}
+
+	uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
+		EventType:   appconstant.EventTypeLeaveGroup,
+		SenderID:    userID,
+		ReceiverIDs: usersID,
+		Payload: appdto.TeamNotificationMessagePayload{
+			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeLeaveGroup),
+			Message:         fmt.Sprintf("Thành viên %s đã rời khỏi nhóm ", user.Email),
+			Link:            utils.Ptr(link),
+			ImageURL:        nil,
+			CorrelationID:   req.GroupID,
+			CorrelationType: int(appconstant.CorrelationTypeGroup),
+		},
+		Metadata: appdto.TeamNotificationMessageMetadata{
+			IsSentMail:           false,
+			NonExistentReceivers: []string{},
+		},
+	}, &appdto.UserWithPermission{
+		ID:                   userID,
+		HasEmailNotification: actor.HasEmailNotification,
+		HasPushNotification:  actor.HasPushNotification,
+	})
+
+	return &appdto.BaseResponse[appdto.LeaveGroupResponse]{
+		Data:  deleted,
 		Error: nil,
 	}, nil
 }
