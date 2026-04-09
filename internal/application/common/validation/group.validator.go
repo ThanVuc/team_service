@@ -446,10 +446,82 @@ func (v *GroupValidator) ValidatePresignURLsRequest(ctx context.Context, req *ap
 		return errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("at least one file is required"))
 	}
 
+	if len(req.Files) > 3 {
+		return errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("a maximum of 3 files can be uploaded"))
+	}
+
 	for i, file := range req.Files {
 		if file.ContentType == "" {
 			return errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("content type is required for file at index "+string(i)))
 		}
+	}
+
+	return nil
+
+}
+
+func (v *GroupValidator) ValidateLeaveGroup(ctx context.Context, req *appdto.LeaveGroupRequest) (*entity.User, errorbase.AppError) {
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
+	if userID == "" {
+		return nil, errorbase.New(errdict.ErrUnauthorized, errorbase.WithDetail("missing user context"))
+	}
+
+	if req.GroupID == "" {
+		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required"))
+	}
+
+	checkGroupExist, err := v.groupRepo.CheckGroupExists(ctx, req.GroupID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !checkGroupExist {
+		return nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("group is not found"))
+	}
+
+	role, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, userID, req.GroupID)
+	if err != nil {
+		return nil, err
+	}
+
+	if role == "" {
+		return nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("user is not a member of the group"))
+	}
+
+	if role == string(enum.GroupRoleOwner) {
+		return nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("owner cannot leave the group without transferring ownership"))
+	}
+	user, err := v.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (v *GroupValidator) ValidateGetGroup(ctx context.Context, req *appdto.GetGroupRequest, actor *appdto.UserWithPermission) errorbase.AppError {
+	userID := utils.GetUserIDFromOutgoingContext(ctx)
+
+	if req.GroupID == "" {
+		return errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("group id is required"))
+	}
+
+	checkGroupExist, err := v.groupRepo.CheckGroupExists(ctx, req.GroupID)
+	if err != nil {
+		return err
+	}
+
+	if !checkGroupExist {
+		return errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("group is not found"))
+	}
+
+	role, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, userID, req.GroupID)
+	if err != nil {
+		return err
+	}
+
+	if role == "" {
+		return errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("user is not a member of the group"))
 	}
 
 	return nil

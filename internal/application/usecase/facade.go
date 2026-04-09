@@ -30,6 +30,7 @@ type (
 		CreateInvite(ctx context.Context, req *appdto.CreateInviteRequest) (*appdto.BaseResponse[appdto.InviteResponse], errorbase.AppError)
 		AcceptInvite(ctx context.Context, req *appdto.AcceptInviteRequest) (*appdto.BaseResponse[appdto.AcceptInviteResponse], errorbase.AppError)
 		GeneratePresignedURLs(ctx context.Context, req *appdto.GeneratePresignedURLsRequest) (*appdto.BaseResponse[appdto.GeneratePresignedURLsResponse], errorbase.AppError)
+		LeaveGroup(ctx context.Context, req *appdto.LeaveGroupRequest) (*appdto.BaseResponse[appdto.LeaveGroupResponse], errorbase.AppError)
 	}
 
 	SprintUseCase interface {

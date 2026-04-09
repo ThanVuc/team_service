@@ -10,6 +10,7 @@ const (
 	EventTypeGroupDeleted      = "GROUP_DELETED"
 	EventTypeMemberJoined      = "MEMBER_JOINED"
 	EventTypeMemberRemoved     = "MEMBER_REMOVED"
+	EventTypeLeaveGroup        = "LEAVE_GROUP"
 	EventTypeMemberRoleUpdated = "MEMBER_ROLE_UPDATED"
 	EventTypeInviteCreated     = "INVITE_CREATED"
 	EventTypeInviteAccepted    = "INVITE_ACCEPTED"
@@ -71,6 +72,8 @@ func GetDisplayTitle(eventType string) string {
 	case EventTypeMemberJoined:
 		return "Thành viên mới"
 	case EventTypeMemberRemoved:
+		return "Thay đổi nhân sự"
+	case EventTypeLeaveGroup:
 		return "Thay đổi nhân sự"
 	case EventTypeMemberRoleUpdated:
 		return "Thay đổi vai trò thành viên"
