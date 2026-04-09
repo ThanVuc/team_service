@@ -54,4 +54,10 @@ var (
 		Title:  "Message Publish Error",
 		Detail: domainhelper.Ptr("Failed to publish message to the message broker."),
 	}
+
+	ErrEmailNotMatched = errorbase.ErrorInfo{
+		Code:   "ts.validation.email-not-matched",
+		Title:  "Email Not Matched",
+		Detail: domainhelper.Ptr("The email associated with the invite does not match the user's email."),
+	}
 )
