@@ -202,6 +202,67 @@ func (q *Queries) CreateWork(ctx context.Context, arg CreateWorkParams) (Work, e
 	return i, err
 }
 
+const createWorks = `-- name: CreateWorks :exec
+INSERT INTO works (
+	id,
+	group_id,
+	sprint_id,
+	name,
+	description,
+	status,
+	assignee_id,
+	creator_id,
+	estimate_hours,
+	story_point,
+	priority,
+	due_date,
+	created_at,
+	updated_at
+) VALUES (
+	UNNEST($1::uuid[]),
+	$2,
+	$3,
+	UNNEST($4::text[]),
+	UNNEST($5::text[]),
+	'todo',
+	NULL,
+	$6,
+	NULL,
+	UNNEST($7::int[]),
+	UNNEST($8::varchar[]),
+	UNNEST($9::date[]),
+	NOW(),
+	NOW()
+)
+`
+
+type CreateWorksParams struct {
+	Column1   []pgtype.UUID
+	GroupID   pgtype.UUID
+	SprintID  pgtype.UUID
+	Column4   []string
+	Column5   []string
+	CreatorID pgtype.UUID
+	Column7   []int32
+	Column8   []string
+	Column9   []pgtype.Date
+}
+
+func (q *Queries) CreateWorks(ctx context.Context, arg CreateWorksParams) error {
+	_, err := q.db.Exec(ctx, createWorks,
+		arg.Column1,
+		arg.GroupID,
+		arg.SprintID,
+		arg.Column4,
+		arg.Column5,
+		arg.CreatorID,
+		arg.Column7,
+		arg.Column8,
+		arg.Column9,
+	)
+	return err
+}
+
 const deleteChecklistItem = `-- name: DeleteChecklistItem :one
 WITH deleted AS (
 	DELETE FROM checklist_items

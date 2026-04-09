@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
 	apphelper "team_service/internal/application/common/helper"
+	icacherepository "team_service/internal/application/common/interface/cacherepository"
 	irepository "team_service/internal/application/common/interface/repository"
 	istore "team_service/internal/application/common/interface/store"
 	appmapper "team_service/internal/application/common/mapper"
@@ -17,6 +19,7 @@ import (
 	"team_service/internal/domain/entity"
 	"team_service/internal/domain/enum"
 	"team_service/internal/infrastructure/share/utils"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/thanvuc/go-core-lib/log"
@@ -30,6 +33,7 @@ type sprintUseCase struct {
 	userRepo           irepository.UserRepository
 	validator          *appvalidation.SprintValidator
 	authHelper         *apphelper.AuthHelper
+	cacheRepo          icacherepository.CacheRepository
 	sprintExportHelper *apphelper.SprintExportHelper
 	groupRepo          irepository.GroupRepository
 	notificationHelper *apphelper.NotificationHelper
@@ -39,6 +43,7 @@ type sprintUseCase struct {
 
 func (uc *sprintUseCase) GenerateSprint(ctx context.Context, req *appdto.GenerateSprintRequest) (*appdto.BaseResponse[appdto.GenerateSprintResponse], errorbase.AppError) {
 	actor, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
+	origin := utils.GetOriginFromIncomingContext(ctx)
 	if err != nil {
 		return &appdto.BaseResponse[appdto.GenerateSprintResponse]{
 			Data: nil,
@@ -62,9 +67,17 @@ func (uc *sprintUseCase) GenerateSprint(ctx context.Context, req *appdto.Generat
 		}, nil
 	}
 
+	jobID := uuid.NewString()
+	if strings.TrimSpace(origin) != "" {
+		cacheKey := appconstant.CacheAISprintOriginPrefix + jobID
+		if cacheErr := uc.cacheRepo.Set(ctx, cacheKey, []byte(origin), 300); cacheErr != nil {
+			uc.logger.Error(fmt.Sprintf("failed to cache ai sprint origin for job %s: %v", jobID, cacheErr))
+		}
+	}
+
 	err = uc.aiHelper.PublishSprintGenerationRequest(ctx, appdto.AISprintGenerationRequestedMessage{
 		EventType: "SPRINT_GENERATION_REQUESTED",
-		JobID:     uuid.NewString(),
+		JobID:     jobID,
 		GroupID:   payload.GroupID,
 		SenderID:  actor.ID,
 		Payload: appdto.AISprintGenerationRequestedPayload{
@@ -107,6 +120,131 @@ func (uc *sprintUseCase) ConsumeAISprintGenerationResult(ctx context.Context) fu
 			return rabbitmq.Ack
 		}
 
+		startDate, err := time.Parse("2006-01-02", message.Payload.Sprint.StartDate)
+		if err != nil {
+			return rabbitmq.NackDiscard
+		}
+
+		endDate, err := time.Parse("2006-01-02", message.Payload.Sprint.EndDate)
+		if err != nil {
+			return rabbitmq.NackDiscard
+		}
+
+		today := normalizeDateToUTC(time.Now().UTC())
+		startDate = normalizeDateToUTC(startDate)
+		endDate = normalizeDateToUTC(endDate)
+
+		sprintName := strings.TrimSpace(message.Payload.Sprint.Name)
+		sprintGoal := strings.TrimSpace(message.Payload.Sprint.Goal)
+
+		var createdSprint *entity.Sprint
+		err = uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
+			createdSprint, err = entity.NewSprint(
+				uuid.NewString(),
+				message.GroupID,
+				sprintName,
+				startDate,
+				endDate,
+				today,
+			)
+			if err != nil {
+				return errorbase.New(errdict.ErrInternal, errorbase.WithDetail(fmt.Sprintf("failed to create sprint entity: %v", err)))
+			}
+
+			if sprintGoal != "" {
+				createdSprint.Goal = utils.Ptr(sprintGoal)
+			}
+
+			createdSprint, err = repo.SprintRepository().CreateSprint(ctx, createdSprint)
+			if err != nil {
+				return errorbase.New(errdict.ErrInternal, errorbase.WithDetail(fmt.Sprintf("failed to create sprint in repository: %v", err)))
+			}
+
+			worksToCreate := make([]*entity.Work, 0, len(message.Payload.Tasks))
+			for _, task := range message.Payload.Tasks {
+				taskName := strings.TrimSpace(task.Name)
+				if taskName == "" {
+					continue
+				}
+
+				var description *string
+				taskDescription := strings.TrimSpace(task.Description)
+				if taskDescription != "" {
+					description = utils.Ptr(taskDescription)
+				}
+
+				var storyPoint *int32
+				if task.StoryPoint != nil && *task.StoryPoint > 0 {
+					value := int32(*task.StoryPoint)
+					storyPoint = &value
+				}
+
+				var priority *enum.WorkPriority
+				if task.Priority != nil {
+					priorityValue := enum.WorkPriority(strings.ToLower(strings.TrimSpace(*task.Priority)))
+					if priorityValue.IsValid() {
+						priority = &priorityValue
+					}
+				}
+
+				var dueDate *time.Time
+				if task.DueDate != nil {
+					parsedDueDate, parseErr := time.Parse("2006-01-02", strings.TrimSpace(*task.DueDate))
+					if parseErr == nil {
+						normalizedDueDate := normalizeDateToUTC(parsedDueDate)
+						dueDate = &normalizedDueDate
+					}
+				}
+
+				work, workErr := entity.NewWork(
+					uuid.NewString(),
+					message.GroupID,
+					createdSprint.ID,
+					taskName,
+					description,
+					message.SenderID,
+					"",
+					nil,
+					storyPoint,
+					priority,
+					dueDate,
+					today,
+				)
+				if workErr != nil {
+					return workErr
+				}
+
+				worksToCreate = append(worksToCreate, work)
+			}
+
+			if len(worksToCreate) > 0 {
+				_, err = repo.WorkRepository().CreateWorks(ctx, worksToCreate)
+				if err != nil {
+					return errorbase.New(errdict.ErrInternal, errorbase.WithDetail(fmt.Sprintf("failed to bulk create works in repository: %v", err)))
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
+			return rabbitmq.NackDiscard
+		}
+
+		var origin string
+		if strings.TrimSpace(message.JobID) != "" {
+			cacheKey := appconstant.CacheAISprintOriginPrefix + message.JobID
+			var cachedOrigin []byte
+			if cacheErr := uc.cacheRepo.Get(ctx, cacheKey, &cachedOrigin); cacheErr == nil {
+				origin = strings.TrimSpace(string(cachedOrigin))
+			}
+		}
+
+		var link *string
+		if origin != "" {
+			generatedLink := fmt.Sprintf("%s/groups/%s/sprints/%s", origin, message.GroupID, createdSprint.ID)
+			link = utils.Ptr(generatedLink)
+		}
+
 		notificationMessage := "AI sprint generation completed successfully"
 		if len(message.Payload.Tasks) > 0 {
 			notificationMessage = fmt.Sprintf("AI sprint generation completed with %d tasks", len(message.Payload.Tasks))
@@ -115,18 +253,17 @@ func (uc *sprintUseCase) ConsumeAISprintGenerationResult(ctx context.Context) fu
 		notificationErr := uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 			EventType:   appconstant.EventTypeSprintGenerationSuccessful,
 			SenderID:    message.SenderID,
-			ReceiverIDs: []string{},
+			ReceiverIDs: []string{message.SenderID},
 			Payload: appdto.TeamNotificationMessagePayload{
 				Title:           appconstant.GetDisplayTitle(appconstant.EventTypeSprintGenerationSuccessful),
 				Message:         notificationMessage,
-				Link:            nil,
+				Link:            link,
 				ImageURL:        nil,
 				CorrelationID:   message.GroupID,
 				CorrelationType: int(appconstant.CorrelationTypeSprint),
 			},
 			Metadata: appdto.TeamNotificationMessageMetadata{
-				IsSentMail:           true,
-				NonExistentReceivers: []string{"sinhhahaha1@gmail.com"},
+				IsSentMail: true,
 			},
 		}, nil)
 		if notificationErr != nil {
@@ -135,6 +272,11 @@ func (uc *sprintUseCase) ConsumeAISprintGenerationResult(ctx context.Context) fu
 
 		return rabbitmq.Ack
 	}
+}
+
+func normalizeDateToUTC(t time.Time) time.Time {
+	y, m, d := t.UTC().Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
 }
 
 func (uc *sprintUseCase) CreateSprint(ctx context.Context, req *appdto.CreateSprintRequest) (*appdto.BaseResponse[appdto.SprintResponse], errorbase.AppError) {

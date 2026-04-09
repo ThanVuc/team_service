@@ -559,6 +559,15 @@ func (v *SprintValidator) ValidateGenerateSprint(
 		return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("end date must be after start date"))
 	}
 
+	isOverlap, err := v.sprintRepo.IsSprintOverlap(ctx, groupID, normalizeDateUTC(start), normalizeDateUTC(end))
+	if err != nil {
+		return nil, errorbase.New(errdict.ErrInternal, errorbase.WithDetail("failed to validate sprint date range overlap"))
+	}
+
+	if isOverlap {
+		return nil, errorbase.New(errdict.ErrConflict, errorbase.WithDetail("sprint date range overlaps an existing sprint"))
+	}
+
 	var additionalContext *string
 	if req.AdditionalContext != nil {
 		value := strings.TrimSpace(*req.AdditionalContext)

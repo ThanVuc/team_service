@@ -4,6 +4,7 @@ import (
 	"context"
 	appdto "team_service/internal/application/common/dto"
 	apphelper "team_service/internal/application/common/helper"
+	icacherepository "team_service/internal/application/common/interface/cacherepository"
 	istore "team_service/internal/application/common/interface/store"
 	appvalidation "team_service/internal/application/common/validation"
 	errorbase "team_service/internal/domain/common/apperror"
@@ -90,6 +91,7 @@ func NewSprintUseCase(
 	store istore.Store,
 	validator *appvalidation.SprintValidator,
 	authHelper *apphelper.AuthHelper,
+	cacheRepo icacherepository.CacheRepository,
 	notificationHelper *apphelper.NotificationHelper,
 	aiHelper *apphelper.AIHelper,
 	logger log.LoggerV2,
@@ -101,6 +103,7 @@ func NewSprintUseCase(
 		userRepo:           store.UserRepository(),
 		validator:          validator,
 		authHelper:         authHelper,
+		cacheRepo:          cacheRepo,
 		sprintExportHelper: apphelper.NewSprintExportHelper(),
 		groupRepo:          store.GroupRepository(),
 		notificationHelper: notificationHelper,

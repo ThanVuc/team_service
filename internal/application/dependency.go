@@ -82,6 +82,7 @@ func (d *Dependency) InitUseCases(ctx context.Context) error {
 		store,
 		sprintValidator,
 		authHelper,
+		d.infra.GetCacheRepository(),
 		notificationHelper,
 		aiHelper,
 		d.infra.GetLogger(),
