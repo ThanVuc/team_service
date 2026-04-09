@@ -82,7 +82,6 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroup
 
 	// handle error from transaction (500)
 	if err != nil {
-		println("ERROR IN USE CASE")
 		return nil, err
 	}
 
@@ -127,7 +126,7 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroup
 func (uc *groupUseCase) Ping(ctx context.Context, req *common.EmptyRequest) (*common.EmptyResponse, errorbase.AppError) {
 	// Implement the logic for the Ping method
 	userID := utils.GetUserIDFromOutgoingContext(ctx)
-	println("Ping received from user:", userID)
+	println("Ping received from user ID:", userID) // Debug log to verify user ID extraction
 	return &common.EmptyResponse{}, nil
 }
 
@@ -150,7 +149,6 @@ func (uc *groupUseCase) ListGroups(ctx context.Context, req *appdto.ListGroupsRe
 	userID := utils.GetUserIDFromOutgoingContext(ctx)
 	groups, err := uc.groupRepo.GetGroupsByUserID(ctx, userID)
 	if err != nil {
-		fmt.Println("Error fetching groups for user:", err)
 		return &appdto.BaseResponse[appdto.ListGroupsResponse]{
 			Data: nil,
 			Error: &appdto.ErrorResponse{
@@ -504,7 +502,6 @@ func (uc *groupUseCase) GetSimpleUserByGroupID(ctx context.Context, req *appdto.
 
 func (uc *groupUseCase) UpdateMemberRole(ctx context.Context, req *appdto.UpdateMemberRoleRequest) (*appdto.BaseResponse[appdto.MemberResponse], errorbase.AppError) {
 	actor, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
-	fmt.Println("actor in UpdateMemberRole:", actor)
 	if err != nil {
 		return &appdto.BaseResponse[appdto.MemberResponse]{
 			Data:  nil,
@@ -758,7 +755,9 @@ func (uc *groupUseCase) AcceptInvite(ctx context.Context, req *appdto.AcceptInvi
 
 	invite, user, err := uc.validator.ValidateAcceptInvitation(ctx, req)
 	if err != nil {
-		if err.ErrorInfo().Detail != nil && (*err.ErrorInfo().Detail == "invite is expired" || *err.ErrorInfo().Detail == "the group has reached maximum number of members") {
+		errCode := err.ErrorInfo().Code
+
+		if (errCode == errdict.ErrInviteExpired.Code || errCode == errdict.ErrGroupMaxMembersReached.Code) && invite != nil && user != nil {
 
 			uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 				EventType:   appconstant.EventTypeInviteError,
@@ -859,7 +858,6 @@ func (uc *groupUseCase) AcceptInvite(ctx context.Context, req *appdto.AcceptInvi
 func (uc *groupUseCase) GeneratePresignedURLs(ctx context.Context, req *appdto.GeneratePresignedURLsRequest) (*appdto.BaseResponse[appdto.GeneratePresignedURLsResponse], errorbase.AppError) {
 	err := uc.validator.ValidatePresignURLsRequest(ctx, req)
 	if err != nil {
-		fmt.Println("Validation error in GeneratePresignedURLs:", err)
 		return &appdto.BaseResponse[appdto.GeneratePresignedURLsResponse]{
 			Data:  nil,
 			Error: appmapper.ToErrorResponse(err),
