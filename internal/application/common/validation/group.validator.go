@@ -381,6 +381,10 @@ func (v *GroupValidator) ValidateAcceptInvitation(ctx context.Context, req *appd
 		if err != nil {
 			return nil, nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("user not found with the email associated with the invite"))
 		}
+
+		if invite.Email != nil && user.Email != *invite.Email {
+			return nil, nil, errorbase.New(errdict.ErrEmailNotMatched, errorbase.WithDetail("the invite is not associated with the user's email"))
+		}
 	} else {
 		user, err = v.userRepo.GetUserByID(ctx, userID)
 		if err != nil {
