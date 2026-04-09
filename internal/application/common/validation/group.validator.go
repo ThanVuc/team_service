@@ -382,8 +382,8 @@ func (v *GroupValidator) ValidateAcceptInvitation(ctx context.Context, req *appd
 			return nil, nil, errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("user not found with the email associated with the invite"))
 		}
 
-		if invite.Email != nil && user.Email != *invite.Email {
-			return nil, nil, errorbase.New(errdict.ErrEmailNotMatched, errorbase.WithDetail("the invite is not associated with the user's email"))
+		if user == nil {
+			return nil, nil, errorbase.New(errdict.ErrUnauthorized, errorbase.WithDetail("user not found with the email associated with the invite"))
 		}
 	} else {
 		user, err = v.userRepo.GetUserByID(ctx, userID)
@@ -397,7 +397,7 @@ func (v *GroupValidator) ValidateAcceptInvitation(ctx context.Context, req *appd
 	}
 
 	if time.Now().UTC().After(invite.ExpiresAt) {
-		return nil, nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("invite is expired"))
+		return nil, nil, errorbase.New(errdict.ErrInviteExpired)
 	}
 
 	existingRole, err := v.groupRepo.GetRoleByUserIDAndGroupID(ctx, user.ID, invite.GroupID)
@@ -426,7 +426,7 @@ func (v *GroupValidator) ValidateAcceptInvitation(ctx context.Context, req *appd
 	}
 
 	if countMember >= 9 {
-		return nil, nil, errorbase.New(errdict.ErrForbidden, errorbase.WithDetail("the group has reached maximum number of members"))
+		return nil, nil, errorbase.New(errdict.ErrGroupMaxMembersReached)
 	}
 
 	countViewer, err := v.groupRepo.CountViewerByGroupID(ctx, invite.GroupID)
