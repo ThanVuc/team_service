@@ -360,3 +360,25 @@ func ToGeneratePresignedURLsGrpcResponse(
 		Error: ToProtoError(resp.Error),
 	}
 }
+
+func ToLeaveGroupRequest(req *team_service.LeaveGroupRequest) *appdto.LeaveGroupRequest {
+	return &appdto.LeaveGroupRequest{
+		GroupID: req.GroupId,
+	}
+}
+
+func ToLeaveGroupGrpcResponse(
+	resp *appdto.BaseResponse[appdto.LeaveGroupResponse],
+) *team_service.LeaveGroupResponse {
+	if resp == nil || resp.Data == nil {
+		return &team_service.LeaveGroupResponse{
+			Success: false,
+			Error:   ToProtoError(resp.Error),
+		}
+	}
+
+	return &team_service.LeaveGroupResponse{
+		Success: resp.Data.Success,
+		Error:   ToProtoError(resp.Error),
+	}
+}

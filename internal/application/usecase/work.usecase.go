@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	adapterdomain "team_service/internal/adapter/constant/domain"
 	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
 	apphelper "team_service/internal/application/common/helper"
@@ -61,12 +62,7 @@ func (uc *workUseCase) CreateWork(ctx context.Context, req *appdto.CreateWorkReq
 		return nil, err
 	}
 
-	// publish work created notification
-	domain := utils.GetBaseURLFromIncomingContext(ctx)
-	if domain == "" {
-		domain = "https://www.schedulr.site"
-	}
-	link := fmt.Sprintf("%s/groups/%s/works/%s", domain, createdWork.GroupID, createdWork.ID)
+	link := fmt.Sprintf("%s/groups/%s/works/%s", adapterdomain.Domain, createdWork.GroupID, createdWork.ID)
 	receivers := []string{actor.ID}
 	if createdWork.AssigneeID != "" && createdWork.AssigneeID != actor.ID {
 		receivers = append(receivers, createdWork.AssigneeID)
@@ -222,12 +218,7 @@ func (uc *workUseCase) UpdateWork(ctx context.Context, req *appdto.UpdateWorkReq
 		}, nil
 	}
 
-	// publish work updated notification
-	domain := utils.GetBaseURLFromIncomingContext(ctx)
-	if domain == "" {
-		domain = "https://www.schedulr.site"
-	}
-	link := fmt.Sprintf("%s/groups/%s/works/%s", domain, updatedWork.GroupID, updatedWork.ID)
+	link := fmt.Sprintf("%s/groups/%s/works/%s", adapterdomain.Domain, updatedWork.GroupID, updatedWork.ID)
 
 	var message string
 	message = fmt.Sprintf("Công việc %s đã được cập nhật", updatedWork.Name)
@@ -303,13 +294,7 @@ func (uc *workUseCase) DeleteWork(ctx context.Context, req *appdto.DeleteWorkReq
 		return nil, err
 	}
 
-	// publish work deleted notification
-	domain := utils.GetBaseURLFromIncomingContext(ctx)
-	if domain == "" {
-		domain = "https://www.schedulr.site"
-	}
-	// we don't have deleted work details here, use work id from payload
-	link := fmt.Sprintf("%s/groups/%s/works", domain, "")
+	link := fmt.Sprintf("%s/groups/%s/works", adapterdomain.Domain, actor.GroupId)
 	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeWorkDeleted,
 		SenderID:    actor.ID,

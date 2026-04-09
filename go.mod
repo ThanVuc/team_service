@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/redis/go-redis/v9 v9.11.0
-	github.com/thanvuc/go-core-lib v1.1.16
+	github.com/thanvuc/go-core-lib v1.1.17
 	github.com/wagslane/go-rabbitmq v0.15.0
 	github.com/xuri/excelize/v2 v2.10.1
 	go.uber.org/zap v1.27.1

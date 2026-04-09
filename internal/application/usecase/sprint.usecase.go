@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	adapterdomain "team_service/internal/adapter/constant/domain"
 	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
 	apphelper "team_service/internal/application/common/helper"
@@ -327,11 +328,8 @@ func (uc *sprintUseCase) CreateSprint(ctx context.Context, req *appdto.CreateSpr
 	if err != nil {
 		return nil, err
 	}
-	domain := utils.GetBaseURLFromIncomingContext(ctx)
-	if domain == "" {
-		domain = "https://www.schedulr.site"
-	}
-	link := fmt.Sprintf("%s/groups/%s/sprints/%s", domain, createdSprint.GroupID, createdSprint.ID)
+
+	link := fmt.Sprintf("%s/groups/%s/sprints/%s", adapterdomain.Domain, createdSprint.GroupID, createdSprint.ID)
 	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeSprintCreated,
 		SenderID:    actor.ID,
@@ -588,11 +586,8 @@ func (uc *sprintUseCase) UpdateSprint(ctx context.Context, req *appdto.UpdateSpr
 	}
 
 	// publish sprint updated notification
-	domain := utils.GetBaseURLFromIncomingContext(ctx)
-	if domain == "" {
-		domain = "https://www.schedulr.site"
-	}
-	link := fmt.Sprintf("%s/groups/%s/sprints/%s", domain, updatedSprint.GroupID, updatedSprint.ID)
+
+	link := fmt.Sprintf("%s/groups/%s/sprints/%s", adapterdomain.Domain, updatedSprint.GroupID, updatedSprint.ID)
 	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeSprintUpdated,
 		SenderID:    actor.ID,
@@ -681,11 +676,7 @@ func (uc *sprintUseCase) UpdateSprintStatus(ctx context.Context, req *appdto.Upd
 		return nil, err
 	}
 
-	domain := utils.GetBaseURLFromIncomingContext(ctx)
-	if domain == "" {
-		domain = "https://www.schedulr.site"
-	}
-	link := fmt.Sprintf("%s/groups/%s/sprints/%s", domain, updatedSprint.GroupID, updatedSprint.ID)
+	link := fmt.Sprintf("%s/groups/%s/sprints/%s", adapterdomain.Domain, updatedSprint.GroupID, updatedSprint.ID)
 	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   eventType,
 		SenderID:    actor.ID,
@@ -751,12 +742,7 @@ func (uc *sprintUseCase) DeleteSprint(ctx context.Context, req *appdto.DeleteSpr
 		return nil, err
 	}
 
-	// publish delete notification
-	domain := utils.GetBaseURLFromIncomingContext(ctx)
-	if domain == "" {
-		domain = "https://www.schedulr.site"
-	}
-	link := fmt.Sprintf("%s/groups/%s/sprints", domain, sprint.GroupID)
+	link := fmt.Sprintf("%s/groups/%s/sprints", adapterdomain.Domain, sprint.GroupID)
 	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeSprintDeleted,
 		SenderID:    actor.ID,
@@ -934,12 +920,7 @@ func (uc *sprintUseCase) DeleteDraftSprint(ctx context.Context, req *appdto.Dele
 		return nil, err
 	}
 
-	// publish delete notification
-	domain := utils.GetBaseURLFromIncomingContext(ctx)
-	if domain == "" {
-		domain = "https://www.schedulr.site"
-	}
-	link := fmt.Sprintf("%s/groups/%s/sprints", domain, sprint.GroupID)
+	link := fmt.Sprintf("%s/groups/%s/sprints", adapterdomain.Domain, sprint.GroupID)
 	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeSprintDeleted,
 		SenderID:    actor.ID,

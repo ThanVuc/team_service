@@ -88,3 +88,11 @@ type PresignedFileItem struct {
 type GeneratePresignedURLsResponse struct {
 	Files []PresignedFileItem
 }
+
+type LeaveGroupRequest struct {
+	GroupID string
+}
+
+type LeaveGroupResponse struct {
+	Success bool
+}
