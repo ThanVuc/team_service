@@ -687,6 +687,7 @@ func (uc *groupUseCase) RemoveMember(ctx context.Context, req *appdto.RemoveMemb
 
 func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInviteRequest) (*appdto.BaseResponse[appdto.InviteResponse], errorbase.AppError) {
 	actor, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
+	origin := utils.GetOriginFromIncomingContext(ctx)
 	if err != nil {
 		return &appdto.BaseResponse[appdto.InviteResponse]{
 			Data:  nil,
@@ -733,7 +734,8 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 	var inviteLink string
 
 	inviteLink = fmt.Sprintf(
-		"https://schedulr.site/te/invite?code=%s",
+		"%s/te/invite?code=%s",
+		origin,
 		createdInvite.Token,
 	)
 
@@ -771,11 +773,9 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 }
 
 func (uc *groupUseCase) AcceptInvite(ctx context.Context, req *appdto.AcceptInviteRequest) (*appdto.BaseResponse[appdto.AcceptInviteResponse], errorbase.AppError) {
-	domain := utils.GetBaseURLFromIncomingContext(ctx)
-	if domain == "" {
-		domain = "https://www.schedulr.site"
-	}
-	link := fmt.Sprintf("%s/groups/", domain)
+	origin := utils.GetOriginFromIncomingContext(ctx)
+
+	link := fmt.Sprintf("%s/groups/", origin)
 
 	invite, user, err := uc.validator.ValidateAcceptInvitation(ctx, req)
 	if err != nil {
