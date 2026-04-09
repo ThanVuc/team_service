@@ -63,3 +63,14 @@ func GetGroupIDFromContext(ctx context.Context) string {
 	}
 	return ""
 }
+
+func GetOriginFromIncomingContext(ctx context.Context) string {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		vals := md.Get("x-origin")
+		if len(vals) > 0 {
+			return vals[0]
+		}
+	}
+	return ""
+}

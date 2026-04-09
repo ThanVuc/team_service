@@ -4,6 +4,7 @@ import (
 	"context"
 	appdto "team_service/internal/application/common/dto"
 	apphelper "team_service/internal/application/common/helper"
+	icacherepository "team_service/internal/application/common/interface/cacherepository"
 	istore "team_service/internal/application/common/interface/store"
 	appvalidation "team_service/internal/application/common/validation"
 	errorbase "team_service/internal/domain/common/apperror"
@@ -40,6 +41,8 @@ type (
 		UpdateSprintStatus(ctx context.Context, req *appdto.UpdateSprintStatusRequest) (*appdto.BaseResponse[appdto.UpdateSprintStatusResponse], errorbase.AppError)
 		DeleteSprint(ctx context.Context, req *appdto.DeleteSprintRequest) (*appdto.BaseResponse[appdto.DeleteSprintResponse], errorbase.AppError)
 		ExportSprint(ctx context.Context, req *appdto.ExportSprintRequest) (*appdto.BaseResponse[appdto.ExportSprintResponse], errorbase.AppError)
+		GenerateSprint(ctx context.Context, req *appdto.GenerateSprintRequest) (*appdto.BaseResponse[appdto.GenerateSprintResponse], errorbase.AppError)
+		ConsumeAISprintGenerationResult(ctx context.Context) func(d rabbitmq.Delivery) rabbitmq.Action
 		DeleteDraftSprint(ctx context.Context, req *appdto.DeleteSprintRequest) (*appdto.BaseResponse[appdto.DeleteSprintResponse], errorbase.AppError)
 	}
 
@@ -88,7 +91,10 @@ func NewSprintUseCase(
 	store istore.Store,
 	validator *appvalidation.SprintValidator,
 	authHelper *apphelper.AuthHelper,
+	cacheRepo icacherepository.CacheRepository,
 	notificationHelper *apphelper.NotificationHelper,
+	aiHelper *apphelper.AIHelper,
+	logger log.LoggerV2,
 ) SprintUseCase {
 	return &sprintUseCase{
 		store:              store,
@@ -97,9 +103,12 @@ func NewSprintUseCase(
 		userRepo:           store.UserRepository(),
 		validator:          validator,
 		authHelper:         authHelper,
+		cacheRepo:          cacheRepo,
 		sprintExportHelper: apphelper.NewSprintExportHelper(),
 		groupRepo:          store.GroupRepository(),
 		notificationHelper: notificationHelper,
+		aiHelper:           aiHelper,
+		logger:             logger,
 	}
 }
 

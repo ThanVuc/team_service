@@ -291,3 +291,36 @@ UPDATE works
 SET assignee_id = NULL
 WHERE group_id = $1
 AND assignee_id = $2;
+
+-- name: CreateWorks :exec
+INSERT INTO works (
+	id,
+	group_id,
+	sprint_id,
+	name,
+	description,
+	status,
+	assignee_id,
+	creator_id,
+	estimate_hours,
+	story_point,
+	priority,
+	due_date,
+	created_at,
+	updated_at
+) VALUES (
+	UNNEST($1::uuid[]),
+	$2,
+	$3,
+	UNNEST($4::text[]),
+	UNNEST($5::text[]),
+	'todo',
+	NULL,
+	$6,
+	NULL,
+	UNNEST($7::int[]),
+	UNNEST($8::varchar[]),
+	UNNEST($9::date[]),
+	NOW(),
+	NOW()
+);

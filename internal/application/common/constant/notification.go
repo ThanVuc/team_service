@@ -22,8 +22,10 @@ const (
 	EventTypeSprintCompleted = "Sprint_COMPLETED"
 	EventTypeSprintCancelled = "SPRINT_CANCELLED"
 	// Additional sprint events
-	EventTypeSprintUpdated = "SPRINT_UPDATED"
-	EventTypeSprintDeleted = "SPRINT_DELETED"
+	EventTypeSprintUpdated              = "SPRINT_UPDATED"
+	EventTypeSprintDeleted              = "SPRINT_DELETED"
+	EventTypeSprintGenerationSuccessful = "SPRINT_GENERATION_SUCCESSFUL"
+	EventTypeSprintGenerationFailed     = "SPRINT_GENERATION_FAILED"
 
 	// Work Events (work.*)
 	// Triggered by task/ticket lifecycle changes
@@ -90,6 +92,10 @@ func GetDisplayTitle(eventType string) string {
 		return "Cập nhật Sprint"
 	case EventTypeSprintDeleted:
 		return "Sprint đã bị xóa"
+	case EventTypeSprintGenerationSuccessful:
+		return "Sprint đã được tạo bằng AI"
+	case EventTypeSprintGenerationFailed:
+		return "AI tạo Sprint thất bại"
 	case EventTypeWorkCreated:
 		return "Công việc mới"
 	case EventTypeWorkAssigned:

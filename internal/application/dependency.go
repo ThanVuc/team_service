@@ -64,6 +64,11 @@ func (d *Dependency) InitUseCases(ctx context.Context) error {
 		d.infra.GetLogger(),
 	)
 
+	aiHelper := apphelper.NewAIHelper(
+		d.infra.GetEventBus(),
+		d.infra.GetLogger(),
+	)
+
 	// ============ use cases ============
 	d.UserUseCase = usecase.NewUserUseCase(store, d.infra.GetLogger())
 	d.GroupUseCase = usecase.NewGroupUseCase(
@@ -77,7 +82,10 @@ func (d *Dependency) InitUseCases(ctx context.Context) error {
 		store,
 		sprintValidator,
 		authHelper,
+		d.infra.GetCacheRepository(),
 		notificationHelper,
+		aiHelper,
+		d.infra.GetLogger(),
 	)
 	d.WorkUseCase = usecase.NewWorkUseCase(
 		store,

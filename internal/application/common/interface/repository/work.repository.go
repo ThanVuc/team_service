@@ -9,6 +9,7 @@ import (
 
 type WorkRepository interface {
 	CreateWork(ctx context.Context, work *entity.Work) (*entity.Work, errorbase.AppError)
+	CreateWorks(ctx context.Context, works []*entity.Work) ([]*entity.Work, errorbase.AppError)
 	UpdateWork(ctx context.Context, req *appdto.UpdateWorkRequest) (*appdto.WorkResponse, errorbase.AppError)
 	DeleteWork(ctx context.Context, workID string) (*appdto.DeleteWorkResponse, errorbase.AppError)
 	GetWorksBySprint(ctx context.Context, groupID string, sprintID *string, assigneeID *string) ([]appdto.WorkResponse, errorbase.AppError)
