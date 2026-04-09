@@ -65,7 +65,7 @@ func ToAcceptInviteRequest(req *team_service.AcceptInviteRequest) *appdto.Accept
 func ToAcceptInviteGrpcResponse(
 	resp *appdto.BaseResponse[appdto.AcceptInviteResponse],
 ) *team_service.AcceptInviteResponse {
-	if resp == nil || resp.Data == nil {
+	if resp == nil {
 		return &team_service.AcceptInviteResponse{
 			Location: "",
 			Error:    ToProtoError(nil),
@@ -73,7 +73,7 @@ func ToAcceptInviteGrpcResponse(
 	}
 
 	return &team_service.AcceptInviteResponse{
-		Location: resp.Data.Location,
+		Location: "redundant", // This field is redundant and can be removed in the future
 		Error:    ToProtoError(resp.Error),
 	}
 }
