@@ -11,12 +11,14 @@ import (
 	"team_service/internal/infrastructure/persistence"
 	"team_service/internal/infrastructure/persistence/db"
 	"team_service/internal/infrastructure/persistence/store"
+	"team_service/internal/infrastructure/r2"
 	"team_service/internal/infrastructure/share/settings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/thanvuc/go-core-lib/cache"
 	"github.com/thanvuc/go-core-lib/eventbus"
 	"github.com/thanvuc/go-core-lib/log"
+	"github.com/thanvuc/go-core-lib/storage"
 	"google.golang.org/grpc"
 )
 
@@ -29,6 +31,7 @@ type Dependency struct {
 	recoveryPanicInterceptor grpc.UnaryServerInterceptor
 	cacheRepository          *cacherepository.CacheRepository
 	cacheClient              *cache.RedisCache
+	r2Client                 *storage.R2Client
 }
 
 func NewDependency() *Dependency {
@@ -81,6 +84,12 @@ func (d *Dependency) InitInfra(ctx context.Context) error {
 	// store
 	d.store = store.NewStore(d.pool)
 
+	// r2 client
+	d.r2Client, err = r2.NewR2Client(cfg.R2, loggerV1)
+	if err != nil {
+		panic(err)
+	}
+
 	// interceptor
 	d.recoveryPanicInterceptor = grpcinterceptor.PanicRecoveryInterceptor(d.logger)
 
@@ -127,6 +136,10 @@ func (d *Dependency) GetConfig() *settings.Configuration {
 
 func (d *Dependency) GetStore() istore.Store {
 	return d.store
+}
+
+func (d *Dependency) GetR2Client() *storage.R2Client {
+	return d.r2Client
 }
 
 func (d *Dependency) GetRecoveryPanicInterceptor() grpc.UnaryServerInterceptor {

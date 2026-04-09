@@ -112,6 +112,28 @@ func (q *Queries) CreateSprint(ctx context.Context, arg CreateSprintParams) (Spr
 	return i, err
 }
 
+const deleteDraftSprintByID = `-- name: DeleteDraftSprintByID :execrows
+WITH target_sprint AS (
+    SELECT sprints.id
+    FROM sprints
+    WHERE sprints.id = $1
+      AND sprints.status = 'draft'
+), deleted_works AS (
+    DELETE FROM works
+    WHERE works.sprint_id IN (SELECT target_sprint.id FROM target_sprint)
+)
+DELETE FROM sprints
+WHERE sprints.id IN (SELECT target_sprint.id FROM target_sprint)
+`
+
+func (q *Queries) DeleteDraftSprintByID(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteDraftSprintByID, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteDraftSprintsByGroupID = `-- name: DeleteDraftSprintsByGroupID :exec
 DELETE FROM sprints
 WHERE id = $1 AND status = 'draft'

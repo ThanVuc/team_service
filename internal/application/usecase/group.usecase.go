@@ -3,6 +3,8 @@ package usecase
 import (
 	"context"
 	"fmt"
+	adapterdomain "team_service/internal/adapter/constant/domain"
+	"team_service/internal/adapter/constant/r2"
 	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
 	apphelper "team_service/internal/application/common/helper"
@@ -19,6 +21,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/thanvuc/go-core-lib/storage"
 )
 
 type groupUseCase struct {
@@ -28,6 +31,7 @@ type groupUseCase struct {
 	validator          *appvalidation.GroupValidator
 	authHelper         *apphelper.AuthHelper
 	notificationHelper *apphelper.NotificationHelper
+	r2Client           *storage.R2Client
 }
 
 func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroupRequest) (*appdto.BaseResponse[appdto.GroupResponse], errorbase.AppError) {
@@ -162,8 +166,6 @@ func (uc *groupUseCase) ListGroups(ctx context.Context, req *appdto.ListGroupsRe
 		}, nil
 	}
 
-	userId := utils.GetUserIDFromOutgoingContext(ctx)
-	fmt.Printf("ListGroups called for userID: %s", userId)
 	if groups == nil {
 		groups = &appdto.ListGroupsResponse{
 			Items: []appdto.ListGroupItem{},
@@ -693,7 +695,7 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 	}
 
 	invite, err := uc.validator.ValidateCreateInvitation(ctx, req, actor)
-	fmt.Println("invite after validation:", invite)
+
 	if err != nil {
 		return &appdto.BaseResponse[appdto.InviteResponse]{
 			Data: nil,
@@ -712,6 +714,8 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 	}
 
 	var usersID []string
+	var nonExistentReceivers []string
+	isSentMail := false
 	if createdInvite.Email != nil {
 		user, err := uc.userRepo.GetUserByEmail(ctx, *createdInvite.Email)
 		if err != nil {
@@ -719,23 +723,17 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 		}
 		if user != nil {
 			usersID = append(usersID, user.ID)
+			isSentMail = false
+		} else {
+			isSentMail = true
+			nonExistentReceivers = append(nonExistentReceivers, *createdInvite.Email)
 		}
 	}
 
-	if createdInvite == nil {
-		return &appdto.BaseResponse[appdto.InviteResponse]{
-			Data: nil,
-			Error: &appdto.ErrorResponse{
-				Code:    errdict.ErrInternal.Code,
-				Message: errdict.ErrInternal.Title,
-				Detail:  errdict.ErrInternal.Detail,
-			},
-		}, nil
-	}
 	var inviteLink string
 
 	inviteLink = fmt.Sprintf(
-		"https://www.schedulr.site/api/v1/ts/invitation/acceptance?code=%s",
+		"https://schedulr.site/te/invite?code=%s",
 		createdInvite.Token,
 	)
 
@@ -752,8 +750,8 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 			CorrelationType: int(appconstant.CorrelationTypeGroup),
 		},
 		Metadata: appdto.TeamNotificationMessageMetadata{
-			IsSentMail:           false,
-			NonExistentReceivers: []string{},
+			IsSentMail:           isSentMail,
+			NonExistentReceivers: nonExistentReceivers,
 		},
 	}, &appdto.UserWithPermission{
 		ID:                   actor.ID,
@@ -840,7 +838,7 @@ func (uc *groupUseCase) AcceptInvite(ctx context.Context, req *appdto.AcceptInvi
 		return nil, err
 	}
 
-	link = fmt.Sprintf("%s/groups/%s", domain, invite.GroupID)
+	link = fmt.Sprintf("%s/group/%s", adapterdomain.Domain, invite.GroupID)
 
 	created = &appdto.AcceptInviteResponse{
 		Location: link,
@@ -876,6 +874,40 @@ func (uc *groupUseCase) AcceptInvite(ctx context.Context, req *appdto.AcceptInvi
 
 	return &appdto.BaseResponse[appdto.AcceptInviteResponse]{
 		Data:  created,
+		Error: nil,
+	}, nil
+}
+
+func (uc *groupUseCase) GeneratePresignedURLs(ctx context.Context, req *appdto.GeneratePresignedURLsRequest) (*appdto.BaseResponse[appdto.GeneratePresignedURLsResponse], errorbase.AppError) {
+	err := uc.validator.ValidatePresignURLsRequest(ctx, req)
+	if err != nil {
+		fmt.Println("Validation error in GeneratePresignedURLs:", err)
+		return &appdto.BaseResponse[appdto.GeneratePresignedURLsResponse]{
+			Data:  nil,
+			Error: appmapper.ToErrorResponse(err),
+		}, nil
+	}
+
+	result := make([]appdto.PresignedFileItem, len(req.Files))
+	for i, file := range req.Files {
+		resp, err := uc.r2Client.GeneratePresignedURL(
+			ctx,
+			r2.PresignURLs(file.ContentType),
+		)
+		if err != nil {
+			return nil, errorbase.Wrap(err, errdict.ErrInternal, errorbase.WithDetail("failed to generate presigned url"))
+		}
+
+		result[i] = appdto.PresignedFileItem{
+			Index:      file.Index,
+			PresignUrl: resp.PresignedURL,
+		}
+	}
+
+	return &appdto.BaseResponse[appdto.GeneratePresignedURLsResponse]{
+		Data: &appdto.GeneratePresignedURLsResponse{
+			Files: result,
+		},
 		Error: nil,
 	}, nil
 }

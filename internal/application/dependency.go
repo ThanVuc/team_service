@@ -76,6 +76,7 @@ func (d *Dependency) InitUseCases(ctx context.Context) error {
 		groupValidator,
 		authHelper,
 		notificationHelper,
+		d.infra.GetR2Client(),
 	)
 	d.SprintUseCase = usecase.NewSprintUseCase(
 		store,

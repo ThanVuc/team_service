@@ -115,3 +115,16 @@ WHERE sprints.id IN (SELECT target_sprint.id FROM target_sprint);
 SELECT id, name, status
 FROM sprints
 WHERE group_id = $1;
+
+-- name: DeleteDraftSprintByID :execrows
+WITH target_sprint AS (
+    SELECT sprints.id
+    FROM sprints
+    WHERE sprints.id = $1
+      AND sprints.status = 'draft'
+), deleted_works AS (
+    DELETE FROM works
+    WHERE works.sprint_id IN (SELECT target_sprint.id FROM target_sprint)
+)
+DELETE FROM sprints
+WHERE sprints.id IN (SELECT target_sprint.id FROM target_sprint);

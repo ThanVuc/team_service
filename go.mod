@@ -4,9 +4,9 @@ go 1.24.3
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jackc/pgx/v5 v5.8.0
-	github.com/thanvuc/go-core-lib v1.1.15
+	github.com/redis/go-redis/v9 v9.11.0
+	github.com/thanvuc/go-core-lib v1.1.16
 	github.com/wagslane/go-rabbitmq v0.15.0
 	github.com/xuri/excelize/v2 v2.10.1
 	go.uber.org/zap v1.27.1
@@ -15,22 +15,32 @@ require (
 )
 
 require (
+	github.com/HugoSmits86/nativewebp v1.2.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/cockroachdb/apd v1.1.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
-	github.com/gofrs/uuid v4.4.0+incompatible // indirect
-	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
-	github.com/lib/pq v1.11.2 // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/json-iterator/go v1.1.10 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/cpuid v1.3.1 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
-	github.com/redis/go-redis/v9 v9.11.0 // indirect
+	github.com/minio/md5-simd v1.1.0 // indirect
+	github.com/minio/minio-go/v7 v7.0.18 // indirect
+	github.com/minio/sha256-simd v0.1.1 // indirect
+	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.1 // indirect
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/richardlehane/mscfb v1.0.6 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
+	github.com/rs/xid v1.2.1 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
+	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
 	github.com/xuri/efp v0.0.1 // indirect
 	github.com/xuri/nfp v0.0.2-0.20250530014748-2ddeb826f9a9 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/image v0.25.0 // indirect
+	gopkg.in/ini.v1 v1.57.0 // indirect
 )
 
 require (

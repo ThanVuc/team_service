@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"database/sql"
+	"errors"
 	appdto "team_service/internal/application/common/dto"
 	errorbase "team_service/internal/domain/common/apperror"
 	errdict "team_service/internal/domain/common/apperror/err"
@@ -11,6 +11,7 @@ import (
 	"team_service/internal/infrastructure/persistence/db/database"
 	"team_service/internal/infrastructure/share/utils"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -83,7 +84,7 @@ func (r *UserRepository) GetUserWithPermissionByID(
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errorbase.New(
 				errdict.ErrUnauthorized,
 				errorbase.WithDetail("user is unauthorized to access this group or user does not exist"),
@@ -194,11 +195,8 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*ent
 	u, err := r.q.GetUserByEmail(ctx, email)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, errorbase.New(
-				errdict.ErrNotFound,
-				errorbase.WithDetail("user not found"),
-			)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
 		}
 
 		return nil, errorbase.Wrap(err, errdict.ErrBadRequest)

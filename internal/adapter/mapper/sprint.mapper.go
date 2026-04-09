@@ -361,3 +361,32 @@ func optionalDateToTime(date *team_service.Date) *time.Time {
 	t := FromDateToTime(date)
 	return &t
 }
+
+func ToDeleteDraftSprintDTO(req *common.IDRequest) *appdto.DeleteSprintRequest {
+	if req == nil {
+		return nil
+	}
+
+	return &appdto.DeleteSprintRequest{
+		SprintID: req.Id,
+	}
+}
+
+func ToDeleteDraftSprintGrpcResponse(resp *appdto.BaseResponse[appdto.DeleteSprintResponse]) *team_service.DeleteDraftSprintsResponse {
+	if resp == nil {
+		return &team_service.DeleteDraftSprintsResponse{
+			Success: false,
+			Error:   ToProtoError(nil),
+		}
+	}
+
+	success := false
+	if resp.Data != nil {
+		success = resp.Data.Success
+	}
+
+	return &team_service.DeleteDraftSprintsResponse{
+		Success: success,
+		Error:   ToProtoError(resp.Error),
+	}
+}

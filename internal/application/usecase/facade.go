@@ -10,6 +10,7 @@ import (
 	"team_service/proto/common"
 
 	"github.com/thanvuc/go-core-lib/log"
+	"github.com/thanvuc/go-core-lib/storage"
 	"github.com/wagslane/go-rabbitmq"
 )
 
@@ -27,6 +28,7 @@ type (
 		RemoveMember(ctx context.Context, req *appdto.RemoveMemberRequest) (*appdto.BaseResponse[appdto.RemoveMemberResponse], errorbase.AppError)
 		CreateInvite(ctx context.Context, req *appdto.CreateInviteRequest) (*appdto.BaseResponse[appdto.InviteResponse], errorbase.AppError)
 		AcceptInvite(ctx context.Context, req *appdto.AcceptInviteRequest) (*appdto.BaseResponse[appdto.AcceptInviteResponse], errorbase.AppError)
+		GeneratePresignedURLs(ctx context.Context, req *appdto.GeneratePresignedURLsRequest) (*appdto.BaseResponse[appdto.GeneratePresignedURLsResponse], errorbase.AppError)
 	}
 
 	SprintUseCase interface {
@@ -40,6 +42,7 @@ type (
 		ExportSprint(ctx context.Context, req *appdto.ExportSprintRequest) (*appdto.BaseResponse[appdto.ExportSprintResponse], errorbase.AppError)
 		GenerateSprint(ctx context.Context, req *appdto.GenerateSprintRequest) (*appdto.BaseResponse[appdto.GenerateSprintResponse], errorbase.AppError)
 		ConsumeAISprintGenerationResult(ctx context.Context) func(d rabbitmq.Delivery) rabbitmq.Action
+		DeleteDraftSprint(ctx context.Context, req *appdto.DeleteSprintRequest) (*appdto.BaseResponse[appdto.DeleteSprintResponse], errorbase.AppError)
 	}
 
 	WorkUseCase interface {
@@ -70,6 +73,7 @@ func NewGroupUseCase(
 	validator *appvalidation.GroupValidator,
 	authHelper *apphelper.AuthHelper,
 	notificationHelper *apphelper.NotificationHelper,
+	r2Client *storage.R2Client,
 ) GroupUseCase {
 	return &groupUseCase{
 		store:              store,
@@ -78,6 +82,7 @@ func NewGroupUseCase(
 		validator:          validator,
 		authHelper:         authHelper,
 		notificationHelper: notificationHelper,
+		r2Client:           r2Client,
 	}
 }
 

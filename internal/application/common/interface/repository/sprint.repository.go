@@ -20,4 +20,5 @@ type SprintRepository interface {
 	IsSprintOverlap(ctx context.Context, groupID string, startDate, endDate time.Time) (bool, errorbase.AppError)
 	GetSprintsByGroupID(ctx context.Context, sprintID string) ([]*entity.Sprint, errorbase.AppError)
 	GetSimpleSprintsByGroupID(ctx context.Context, groupID string) ([]*appdto.SimpleSprintDTO, errorbase.AppError)
+	DeleteDraftSprintBySprintID(ctx context.Context, sprintID string) errorbase.AppError
 }
