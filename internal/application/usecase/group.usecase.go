@@ -549,7 +549,7 @@ func (uc *groupUseCase) UpdateMemberRole(ctx context.Context, req *appdto.Update
 		return nil, err
 	}
 
-	link := fmt.Sprintf("%s/groups/%s", adapterdomain.Domain, req.GroupID)
+	link := apphelper.BuildMembersTabLink(ctx, req.GroupID)
 
 	var usersID []string
 	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, req.GroupID)
@@ -625,13 +625,24 @@ func (uc *groupUseCase) RemoveMember(ctx context.Context, req *appdto.RemoveMemb
 		return nil, err
 	}
 
-	link := fmt.Sprintf("%s/groups/%s", adapterdomain.Domain, req.GroupID)
-
-	var usersID []string
-	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, req.GroupID)
+	group, _, _, err := uc.groupRepo.GetGroupByID(ctx, req.GroupID)
 	if err != nil {
 		return nil, err
 	}
+
+	groupName := ""
+	if group != nil {
+		groupName = group.Name
+	}
+
+	link := fmt.Sprintf("%s/groups/%s", adapterdomain.Domain, req.GroupID)
+
+	members, err := uc.userRepo.GetListMembersByGroupID(ctx, req.GroupID)
+	if err != nil {
+		return nil, err
+	}
+	usersID := apphelper.CollectAllMemberIDs(members)
+	usersID = apphelper.UniqueIDs(append(usersID, req.MemberId)...)
 
 	uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeMemberRemoved,
@@ -639,14 +650,14 @@ func (uc *groupUseCase) RemoveMember(ctx context.Context, req *appdto.RemoveMemb
 		ReceiverIDs: usersID,
 		Payload: appdto.TeamNotificationMessagePayload{
 			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeMemberRemoved),
-			Message:         fmt.Sprintf("Thành viên %s đã rời khỏi nhóm ", member.Email),
+			Message:         fmt.Sprintf("%s không còn là thành viên của nhóm %s.", member.Email, groupName),
 			Link:            utils.Ptr(link),
 			ImageURL:        nil,
 			CorrelationID:   req.GroupID,
 			CorrelationType: int(appconstant.CorrelationTypeGroup),
 		},
 		Metadata: appdto.TeamNotificationMessageMetadata{
-			IsSentMail:           false,
+			IsSentMail:           true,
 			NonExistentReceivers: []string{},
 		},
 	}, &appdto.UserWithPermission{
@@ -816,25 +827,35 @@ func (uc *groupUseCase) AcceptInvite(ctx context.Context, req *appdto.AcceptInvi
 		return nil, err
 	}
 
-	link = fmt.Sprintf("%s/group/%s", adapterdomain.Domain, invite.GroupID)
+	link = apphelper.BuildMembersTabLink(ctx, invite.GroupID)
 
 	created = &appdto.AcceptInviteResponse{
 		Location: link,
 	}
 
-	var usersID []string
-	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, invite.GroupID)
+	members, err := uc.userRepo.GetListMembersByGroupID(ctx, invite.GroupID)
+	if err != nil {
+		return nil, err
+	}
+	usersID := apphelper.CollectAllMemberIDs(members)
+
+	group, _, _, err := uc.groupRepo.GetGroupByID(ctx, invite.GroupID)
 	if err != nil {
 		return nil, err
 	}
 
+	groupName := ""
+	if group != nil {
+		groupName = group.Name
+	}
+
 	uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
-		EventType:   appconstant.EventTypeInviteAccepted,
+		EventType:   appconstant.EventTypeMemberJoined,
 		SenderID:    invite.CreatedBy,
 		ReceiverIDs: usersID,
 		Payload: appdto.TeamNotificationMessagePayload{
-			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeInviteAccepted),
-			Message:         fmt.Sprintf("Thành viên %s đã chấp nhận lời mời tham gia nhóm", user.Email),
+			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeMemberJoined),
+			Message:         fmt.Sprintf("%s đã tham gia vào nhóm %s.", user.Email, groupName),
 			Link:            utils.Ptr(link),
 			ImageURL:        nil,
 			CorrelationID:   invite.GroupID,
