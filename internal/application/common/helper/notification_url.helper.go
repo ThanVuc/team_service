@@ -4,19 +4,11 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	adapterdomain "team_service/internal/adapter/constant/domain"
 	"team_service/internal/infrastructure/share/utils"
 )
 
 func ResolveNotificationOrigin(ctx context.Context) string {
-	origin := strings.TrimSpace(utils.GetBaseURLFromIncomingContext(ctx))
-	if origin == "" {
-		origin = strings.TrimSpace(utils.GetOriginFromIncomingContext(ctx))
-	}
-	if origin == "" {
-		origin = adapterdomain.Domain
-	}
-
+	origin := strings.TrimSpace(utils.GetOriginFromIncomingContext(ctx))
 	return strings.TrimRight(origin, "/")
 }
 
