@@ -3,6 +3,7 @@ package apphelper
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
 	errorbase "team_service/internal/domain/common/apperror"
@@ -41,14 +42,15 @@ func NewNotificationHelper(
 func (h *NotificationHelper) PublishTeamNotificationMessage(
 	ctx context.Context,
 	message appdto.TeamNotificationMessage,
-	user *appdto.UserWithPermission,
+	_ *appdto.UserWithPermission,
 ) errorbase.AppError {
-	if user != nil {
-		if !user.HasPushNotification && !user.HasEmailNotification {
-			return nil
-		}
+	message.ReceiverIDs = normalizeReceiverIDs(message.ReceiverIDs)
+	if len(message.ReceiverIDs) == 0 && len(message.Metadata.NonExistentReceivers) == 0 {
+		return nil
+	}
 
-		message.Metadata.IsSentMail = user.HasEmailNotification
+	if !message.Metadata.IsSentMail {
+		message.Metadata.IsSentMail = appconstant.IsRequireEmail(message.EventType)
 	}
 
 	bytesMessage, err := json.Marshal(message)
@@ -69,4 +71,28 @@ func (h *NotificationHelper) PublishTeamNotificationMessage(
 	}
 
 	return nil
+}
+
+func normalizeReceiverIDs(receiverIDs []string) []string {
+	if len(receiverIDs) == 0 {
+		return []string{}
+	}
+
+	seen := make(map[string]struct{}, len(receiverIDs))
+	result := make([]string, 0, len(receiverIDs))
+	for _, receiverID := range receiverIDs {
+		trimmed := strings.TrimSpace(receiverID)
+		if trimmed == "" {
+			continue
+		}
+
+		if _, ok := seen[trimmed]; ok {
+			continue
+		}
+
+		seen[trimmed] = struct{}{}
+		result = append(result, trimmed)
+	}
+
+	return result
 }

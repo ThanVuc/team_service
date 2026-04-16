@@ -323,20 +323,20 @@ func (uc *sprintUseCase) CreateSprint(ctx context.Context, req *appdto.CreateSpr
 		return nil, err
 	}
 
-	var usersID []string
-	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, req.GroupID)
+	members, err := uc.userRepo.GetListMembersByGroupID(ctx, req.GroupID)
 	if err != nil {
 		return nil, err
 	}
+	usersID := apphelper.CollectMemberIDsByRoles(members, enum.GroupRoleOwner, enum.GroupRoleManager)
 
-	link := fmt.Sprintf("%s/groups/%s/sprints/%s", adapterdomain.Domain, createdSprint.GroupID, createdSprint.ID)
+	link := apphelper.BuildSprintsTabLink(ctx, createdSprint.GroupID)
 	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeSprintCreated,
 		SenderID:    actor.ID,
 		ReceiverIDs: usersID,
 		Payload: appdto.TeamNotificationMessagePayload{
 			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeSprintCreated),
-			Message:         fmt.Sprintf("%s đã tạo sprint %s thành công", actor.Email, createdSprint.Name),
+			Message:         fmt.Sprintf("Một Sprint mới '%s' đã được tạo (Draft).", createdSprint.Name),
 			Link:            utils.Ptr(link),
 			ImageURL:        nil,
 			CorrelationID:   createdSprint.GroupID,
@@ -587,7 +587,7 @@ func (uc *sprintUseCase) UpdateSprint(ctx context.Context, req *appdto.UpdateSpr
 
 	// publish sprint updated notification
 
-	link := fmt.Sprintf("%s/groups/%s/sprints/%s", adapterdomain.Domain, updatedSprint.GroupID, updatedSprint.ID)
+	link := apphelper.BuildSprintWorkboardLink(ctx, updatedSprint.GroupID, updatedSprint.ID)
 	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeSprintUpdated,
 		SenderID:    actor.ID,
@@ -670,10 +670,18 @@ func (uc *sprintUseCase) UpdateSprintStatus(ctx context.Context, req *appdto.Upd
 		eventType = appconstant.EventTypeSprintCancelled
 	}
 
-	var usersID []string
-	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, updatedSprint.GroupID)
+	members, err := uc.userRepo.GetListMembersByGroupID(ctx, updatedSprint.GroupID)
 	if err != nil {
 		return nil, err
+	}
+	usersID := apphelper.CollectAllMemberIDs(members)
+
+	displayMessage := fmt.Sprintf("Sprint '%s' đã chính thức bắt đầu. Hãy kiểm tra task của bạn.", updatedSprint.Name)
+	switch eventType {
+	case appconstant.EventTypeSprintCompleted:
+		displayMessage = fmt.Sprintf("Sprint '%s' đã hoàn thành. Hãy kiểm tra báo cáo tiến độ.", updatedSprint.Name)
+	case appconstant.EventTypeSprintCancelled:
+		displayMessage = fmt.Sprintf("Sprint '%s' đã bị hủy.", updatedSprint.Name)
 	}
 
 	link := fmt.Sprintf("%s/groups/%s/sprints/%s", adapterdomain.Domain, updatedSprint.GroupID, updatedSprint.ID)
@@ -683,7 +691,7 @@ func (uc *sprintUseCase) UpdateSprintStatus(ctx context.Context, req *appdto.Upd
 		ReceiverIDs: usersID,
 		Payload: appdto.TeamNotificationMessagePayload{
 			Title:           appconstant.GetDisplayTitle(eventType),
-			Message:         fmt.Sprintf("Sprint %s đã thay đổi trạng thái thành %s", updatedSprint.Name, string(payload.Status)),
+			Message:         displayMessage,
 			Link:            utils.Ptr(link),
 			ImageURL:        nil,
 			CorrelationID:   updatedSprint.GroupID,

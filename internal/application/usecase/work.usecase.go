@@ -188,6 +188,22 @@ func (uc *workUseCase) UpdateWork(ctx context.Context, req *appdto.UpdateWorkReq
 		}, nil
 	}
 
+	previousWork, err := uc.workRepo.GetWorkAggregation(ctx, payload.WorkID)
+	if err != nil {
+		return &appdto.BaseResponse[appdto.WorkResponse]{
+			Data:  nil,
+			Error: appmapper.ToErrorResponse(err),
+		}, nil
+	}
+
+	if previousWork == nil {
+		notFoundErr := errorbase.New(errdict.ErrNotFound, errorbase.WithDetail("work not found"))
+		return &appdto.BaseResponse[appdto.WorkResponse]{
+			Data:  nil,
+			Error: appmapper.ToErrorResponse(notFoundErr),
+		}, nil
+	}
+
 	var updatedWork *appdto.WorkResponse
 	err = uc.store.ExecTx(ctx, func(repo istore.RepositoryContainer) errorbase.AppError {
 		updatedWorkResp, err := repo.WorkRepository().UpdateWork(ctx, payload.Request)
@@ -218,7 +234,61 @@ func (uc *workUseCase) UpdateWork(ctx context.Context, req *appdto.UpdateWorkReq
 		}, nil
 	}
 
-	link := fmt.Sprintf("%s/groups/%s/works/%s", adapterdomain.Domain, updatedWork.GroupID, updatedWork.ID)
+	sprintID := ""
+	if updatedWork.SprintID != nil {
+		sprintID = *updatedWork.SprintID
+	}
+
+	link := apphelper.BuildWorkUpdateLink(ctx, updatedWork.GroupID, sprintID, updatedWork.ID)
+	previousAssigneeID := ""
+	if previousWork.AssigneeID != nil {
+		previousAssigneeID = *previousWork.AssigneeID
+	}
+
+	currentAssigneeID := ""
+	if updatedWork.AssigneeID != nil {
+		currentAssigneeID = *updatedWork.AssigneeID
+	}
+
+	if currentAssigneeID != "" && currentAssigneeID != previousAssigneeID {
+		_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
+			EventType:   appconstant.EventTypeWorkAssigned,
+			SenderID:    actor.ID,
+			ReceiverIDs: []string{currentAssigneeID},
+			Payload: appdto.TeamNotificationMessagePayload{
+				Title:           appconstant.GetDisplayTitle(appconstant.EventTypeWorkAssigned),
+				Message:         fmt.Sprintf("Bạn đã được giao thực hiện công việc '%s'.", updatedWork.Name),
+				Link:            utils.Ptr(link),
+				ImageURL:        nil,
+				CorrelationID:   updatedWork.ID,
+				CorrelationType: int(appconstant.CorrelationTypeWork),
+			},
+			Metadata: appdto.TeamNotificationMessageMetadata{
+				IsSentMail:           true,
+				NonExistentReceivers: []string{},
+			},
+		}, nil)
+	}
+
+	if updatedWork.Status != previousWork.Status && currentAssigneeID != "" {
+		_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
+			EventType:   appconstant.EventTypeWorkStatusChanged,
+			SenderID:    actor.ID,
+			ReceiverIDs: []string{currentAssigneeID},
+			Payload: appdto.TeamNotificationMessagePayload{
+				Title:           appconstant.GetDisplayTitle(appconstant.EventTypeWorkStatusChanged),
+				Message:         fmt.Sprintf("Công việc '%s' đã chuyển sang trạng thái %s.", updatedWork.Name, updatedWork.Status),
+				Link:            utils.Ptr(link),
+				ImageURL:        nil,
+				CorrelationID:   updatedWork.ID,
+				CorrelationType: int(appconstant.CorrelationTypeWork),
+			},
+			Metadata: appdto.TeamNotificationMessageMetadata{
+				IsSentMail:           false,
+				NonExistentReceivers: []string{},
+			},
+		}, nil)
+	}
 
 	var message string
 	message = fmt.Sprintf("Công việc %s đã được cập nhật", updatedWork.Name)
@@ -479,6 +549,45 @@ func (uc *workUseCase) CreateComment(ctx context.Context, req *appdto.CreateComm
 
 	if err != nil {
 		return nil, err
+	}
+
+	work, err := uc.workRepo.GetWorkAggregation(ctx, payload.WorkID)
+	if err != nil {
+		return nil, err
+	}
+
+	if work != nil {
+		receiverIDs := make([]string, 0)
+		if work.AssigneeID != nil {
+			receiverIDs = append(receiverIDs, *work.AssigneeID)
+		}
+
+		receiverIDs = append(receiverIDs, apphelper.CollectDiscussionParticipantIDs(work)...)
+		receiverIDs = apphelper.ExcludeID(apphelper.UniqueIDs(receiverIDs...), actor.ID)
+
+		sprintID := ""
+		if work.SprintID != nil {
+			sprintID = *work.SprintID
+		}
+
+		workLink := apphelper.BuildWorkUpdateLink(ctx, work.GroupID, sprintID, work.ID)
+		_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
+			EventType:   appconstant.EventTypeWorkCommented,
+			SenderID:    actor.ID,
+			ReceiverIDs: receiverIDs,
+			Payload: appdto.TeamNotificationMessagePayload{
+				Title:           appconstant.GetDisplayTitle(appconstant.EventTypeWorkCommented),
+				Message:         fmt.Sprintf("%s đã bình luận trong '%s': %s", actor.Email, work.Name, payload.Comment.Content),
+				Link:            utils.Ptr(workLink),
+				ImageURL:        nil,
+				CorrelationID:   work.ID,
+				CorrelationType: int(appconstant.CorrelationTypeWork),
+			},
+			Metadata: appdto.TeamNotificationMessageMetadata{
+				IsSentMail:           false,
+				NonExistentReceivers: []string{},
+			},
+		}, nil)
 	}
 
 	return &appdto.BaseResponse[appdto.CommentListResponse]{

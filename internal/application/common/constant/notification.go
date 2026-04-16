@@ -20,7 +20,7 @@ const (
 	// Triggered by time-management and progress-tracking changes
 	EventTypeSprintCreated   = "SPRINT_CREATED"
 	EventTypeSprintActivated = "SPRINT_ACTIVATED"
-	EventTypeSprintCompleted = "Sprint_COMPLETED"
+	EventTypeSprintCompleted = "SPRINT_COMPLETED"
 	EventTypeSprintCancelled = "SPRINT_CANCELLED"
 	// Additional sprint events
 	EventTypeSprintUpdated              = "SPRINT_UPDATED"
