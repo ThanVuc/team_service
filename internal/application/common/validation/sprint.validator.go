@@ -121,7 +121,7 @@ func (v *SprintValidator) ValidateCreateSprint(
 	}
 
 	var goal *string
-	if req.Goal != nil {
+	if req.Goal != nil && strings.TrimSpace(*req.Goal) != "" {
 		goalValue := strings.TrimSpace(*req.Goal)
 		if goalValue == "" {
 			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("goal must not be empty when provided"))
@@ -282,7 +282,7 @@ func (v *SprintValidator) ValidateUpdateSprint(
 	}
 
 	var goal *string
-	if req.Goal != nil {
+	if req.Goal != nil && strings.TrimSpace(*req.Goal) != "" {
 		goalValue := strings.TrimSpace(*req.Goal)
 		if goalValue == "" {
 			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("goal must not be empty when provided"))

@@ -154,7 +154,7 @@ func (v *WorkValidator) ValidateCreateWork(
 	}
 
 	var description *string
-	if req.Description != nil {
+	if req.Description != nil && strings.TrimSpace(*req.Description) != "" {
 		descriptionValue := strings.TrimSpace(*req.Description)
 		if descriptionValue == "" {
 			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("description must not be empty when provided"))
@@ -337,7 +337,7 @@ func (v *WorkValidator) ValidateUpdateWork(
 		req.Name = &name
 	}
 
-	if req.Description != nil {
+	if req.Description != nil && strings.TrimSpace(*req.Description) != "" {
 		description := strings.TrimSpace(*req.Description)
 		if description == "" {
 			return nil, errorbase.New(errdict.ErrBadRequest, errorbase.WithDetail("description must not be empty when provided"))
