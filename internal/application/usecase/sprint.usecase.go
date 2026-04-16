@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	adapterdomain "team_service/internal/adapter/constant/domain"
 	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
 	apphelper "team_service/internal/application/common/helper"
@@ -684,7 +683,7 @@ func (uc *sprintUseCase) UpdateSprintStatus(ctx context.Context, req *appdto.Upd
 		displayMessage = fmt.Sprintf("Sprint '%s' đã bị hủy.", updatedSprint.Name)
 	}
 
-	link := fmt.Sprintf("%s/groups/%s/sprints/%s", adapterdomain.Domain, updatedSprint.GroupID, updatedSprint.ID)
+	link := apphelper.BuildSprintWorkboardLink(ctx, updatedSprint.GroupID, updatedSprint.ID)
 	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   eventType,
 		SenderID:    actor.ID,
@@ -750,7 +749,7 @@ func (uc *sprintUseCase) DeleteSprint(ctx context.Context, req *appdto.DeleteSpr
 		return nil, err
 	}
 
-	link := fmt.Sprintf("%s/groups/%s/sprints", adapterdomain.Domain, sprint.GroupID)
+	link := fmt.Sprintf("%s/groups/%s/sprints", apphelper.ResolveNotificationOrigin(ctx), sprint.GroupID)
 	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeSprintDeleted,
 		SenderID:    actor.ID,
@@ -928,7 +927,7 @@ func (uc *sprintUseCase) DeleteDraftSprint(ctx context.Context, req *appdto.Dele
 		return nil, err
 	}
 
-	link := fmt.Sprintf("%s/groups/%s/sprints", adapterdomain.Domain, sprint.GroupID)
+	link := fmt.Sprintf("%s/groups/%s/sprints", apphelper.ResolveNotificationOrigin(ctx), sprint.GroupID)
 	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeSprintDeleted,
 		SenderID:    actor.ID,

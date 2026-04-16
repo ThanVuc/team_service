@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"fmt"
-	adapterdomain "team_service/internal/adapter/constant/domain"
 	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
 	apphelper "team_service/internal/application/common/helper"
@@ -28,7 +27,7 @@ type workUseCase struct {
 }
 
 func (uc *workUseCase) CreateWork(ctx context.Context, req *appdto.CreateWorkRequest) (*appdto.BaseResponse[appdto.WorkResponse], errorbase.AppError) {
-	actor, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleMember)
+	_, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleMember)
 	if err != nil {
 		return &appdto.BaseResponse[appdto.WorkResponse]{
 			Data:  nil,
@@ -61,33 +60,6 @@ func (uc *workUseCase) CreateWork(ctx context.Context, req *appdto.CreateWorkReq
 	if err != nil {
 		return nil, err
 	}
-
-	link := fmt.Sprintf("%s/groups/%s/works/%s", adapterdomain.Domain, createdWork.GroupID, createdWork.ID)
-	receivers := []string{actor.ID}
-	if createdWork.AssigneeID != "" && createdWork.AssigneeID != actor.ID {
-		receivers = append(receivers, createdWork.AssigneeID)
-	}
-	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
-		EventType:   appconstant.EventTypeWorkCreated,
-		SenderID:    actor.ID,
-		ReceiverIDs: receivers,
-		Payload: appdto.TeamNotificationMessagePayload{
-			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeWorkCreated),
-			Message:         fmt.Sprintf("Bạn đã tạo công việc %s", createdWork.Name),
-			Link:            utils.Ptr(link),
-			ImageURL:        nil,
-			CorrelationID:   createdWork.GroupID,
-			CorrelationType: int(appconstant.CorrelationTypeWork),
-		},
-		Metadata: appdto.TeamNotificationMessageMetadata{
-			IsSentMail:           false,
-			NonExistentReceivers: []string{},
-		},
-	}, &appdto.UserWithPermission{
-		ID:                   actor.ID,
-		HasEmailNotification: actor.HasEmailNotification,
-		HasPushNotification:  actor.HasPushNotification,
-	})
 
 	return &appdto.BaseResponse[appdto.WorkResponse]{
 		Data:  appmapper.ToWorkResponse(createdWork),
@@ -364,7 +336,7 @@ func (uc *workUseCase) DeleteWork(ctx context.Context, req *appdto.DeleteWorkReq
 		return nil, err
 	}
 
-	link := fmt.Sprintf("%s/groups/%s/works", adapterdomain.Domain, actor.GroupId)
+	link := fmt.Sprintf("%s/groups/%s/works", apphelper.ResolveNotificationOrigin(ctx), actor.GroupId)
 	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeWorkDeleted,
 		SenderID:    actor.ID,
