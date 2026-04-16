@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"fmt"
-	adapterdomain "team_service/internal/adapter/constant/domain"
 	"team_service/internal/adapter/constant/r2"
 	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
@@ -93,7 +92,7 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroup
 		1,
 	)
 
-	link := fmt.Sprintf("%s/groups/%s", adapterdomain.Domain, group.ID)
+	link := fmt.Sprintf("%s/groups/%s", apphelper.ResolveNotificationOrigin(ctx), group.ID)
 
 	uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeGroupCreated,
@@ -300,7 +299,7 @@ func (uc *groupUseCase) UpdateGroup(ctx context.Context, req *appdto.UpdateGroup
 		return nil, err
 	}
 
-	link := fmt.Sprintf("%s/groups/%s", adapterdomain.Domain, group.ID)
+	link := fmt.Sprintf("%s/groups/%s", apphelper.ResolveNotificationOrigin(ctx), group.ID)
 
 	uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeGroupUpdated,
@@ -387,7 +386,7 @@ func (uc *groupUseCase) DeleteGroup(ctx context.Context, req *appdto.DeleteGroup
 		return nil, err
 	}
 
-	link := fmt.Sprintf("%s/groups/", adapterdomain.Domain)
+	link := fmt.Sprintf("%s/groups/", apphelper.ResolveNotificationOrigin(ctx))
 
 	var usersID []string
 	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, req.GroupID)
@@ -635,7 +634,7 @@ func (uc *groupUseCase) RemoveMember(ctx context.Context, req *appdto.RemoveMemb
 		groupName = group.Name
 	}
 
-	link := fmt.Sprintf("%s/groups/%s", adapterdomain.Domain, req.GroupID)
+	link := apphelper.BuildMembersTabLink(ctx, req.GroupID)
 
 	members, err := uc.userRepo.GetListMembersByGroupID(ctx, req.GroupID)
 	if err != nil {
@@ -674,7 +673,6 @@ func (uc *groupUseCase) RemoveMember(ctx context.Context, req *appdto.RemoveMemb
 
 func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInviteRequest) (*appdto.BaseResponse[appdto.InviteResponse], errorbase.AppError) {
 	actor, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
-	origin := utils.GetOriginFromIncomingContext(ctx)
 	if err != nil {
 		return &appdto.BaseResponse[appdto.InviteResponse]{
 			Data:  nil,
@@ -719,6 +717,7 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 	}
 
 	var inviteLink string
+	origin := apphelper.ResolveNotificationOrigin(ctx)
 
 	inviteLink = fmt.Sprintf(
 		"%s/te/invite?code=%s",
@@ -760,7 +759,7 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 }
 
 func (uc *groupUseCase) AcceptInvite(ctx context.Context, req *appdto.AcceptInviteRequest) (*appdto.BaseResponse[appdto.AcceptInviteResponse], errorbase.AppError) {
-	origin := utils.GetOriginFromIncomingContext(ctx)
+	origin := apphelper.ResolveNotificationOrigin(ctx)
 
 	link := fmt.Sprintf("%s/groups/", origin)
 
@@ -950,10 +949,7 @@ func (uc *groupUseCase) LeaveGroup(ctx context.Context, req *appdto.LeaveGroupRe
 		return nil, err
 	}
 
-	domain := utils.GetBaseURLFromIncomingContext(ctx)
-	if domain == "" {
-		domain = adapterdomain.Domain
-	}
+	domain := apphelper.ResolveNotificationOrigin(ctx)
 	link := fmt.Sprintf("%s/groups/%s", domain, req.GroupID)
 
 	var usersID []string
