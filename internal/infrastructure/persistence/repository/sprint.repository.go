@@ -438,6 +438,8 @@ func (r *SprintRepository) GetSprintsByGroupID(
 			VelocityWork:     utils.Ptr(int32(sprint.VelocityWork.Int32)),
 			VelocityEstimate: utils.Ptr(float64(sprint.VelocityEstimate.Float64)),
 			WorkDeleted:      utils.Ptr(int32(sprint.WorkDeleted.Int32)),
+			TotalWork:        utils.FromInt64ToInt32(&sprint.TotalWorkCount),
+			CompletedWork:    utils.FromInt64ToInt32(&sprint.CompletedWorkCount),
 		})
 	}
 
@@ -473,31 +475,30 @@ func (r *SprintRepository) GetSimpleSprintsByGroupID(
 	return result, nil
 }
 
-
 func (r *SprintRepository) DeleteDraftSprintBySprintID(ctx context.Context, sprintID string) errorbase.AppError {
-    var sprintUUID pgtype.UUID
-    if err := sprintUUID.Scan(sprintID); err != nil {
-        return errorbase.New(
-            errdict.ErrInternal,
-            errorbase.WithDetail("failed to parse sprint id"),
-        )
-    }
+	var sprintUUID pgtype.UUID
+	if err := sprintUUID.Scan(sprintID); err != nil {
+		return errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse sprint id"),
+		)
+	}
 
-    rowsAffected, err := r.q.DeleteDraftSprintByID(ctx, sprintUUID)
-    if err != nil {
-        return errorbase.Wrap(
-            err,
-            errdict.ErrInternal,
-            errorbase.WithDetail(fmt.Sprintf("failed to delete sprint id=%s", sprintID)),
-        )
-    }
+	rowsAffected, err := r.q.DeleteDraftSprintByID(ctx, sprintUUID)
+	if err != nil {
+		return errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to delete sprint id=%s", sprintID)),
+		)
+	}
 
-    if rowsAffected == 0 {
-        return errorbase.New(
-            errdict.ErrUnprocessable,
-            errorbase.WithDetail("sprint not found or not deletable (must be draft)"),
-        )
-    }
+	if rowsAffected == 0 {
+		return errorbase.New(
+			errdict.ErrUnprocessable,
+			errorbase.WithDetail("sprint not found or not deletable (must be draft)"),
+		)
+	}
 
-    return nil
+	return nil
 }

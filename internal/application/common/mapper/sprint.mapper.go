@@ -31,5 +31,17 @@ func ToSprintResponse(sprint *entity.Sprint) *appdto.SprintResponse {
 		response.ProgressPercent = float32(*sprint.VelocityEstimate)
 	}
 
+	if sprint.TotalWork != nil {
+		response.TotalWork = *sprint.TotalWork
+	}
+
+	if sprint.CompletedWork != nil {
+		response.CompletedWork = *sprint.CompletedWork
+	}
+
+	if response.TotalWork > 0 {
+		response.ProgressPercent = float32(response.CompletedWork) / float32(response.TotalWork) * 100
+	}
+
 	return response
 }
