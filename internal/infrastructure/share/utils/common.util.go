@@ -154,3 +154,11 @@ func SafeFloat64(f *float64) float64 {
 	}
 	return *f
 }
+
+func FromInt64ToInt32(i *int64) *int32 {
+	if i == nil {
+		return nil
+	}
+	i32 := int32(*i)
+	return &i32
+}

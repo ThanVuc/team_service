@@ -13,10 +13,24 @@ SET status = 'canceled', updated_at = NOW()
 WHERE id = $1 AND status = 'active';
 
 -- name: GetSprintsByGroupID :many
-SELECT *
-FROM sprints
-WHERE group_id = $1
-ORDER BY created_at DESC;
+SELECT
+    s.*,
+    (
+        SELECT COUNT(*)
+        FROM works w
+        WHERE w.sprint_id = s.id
+            AND w.group_id = $1
+    ) AS total_work_count,
+    (
+        SELECT COUNT(*)
+        FROM works w
+        WHERE w.sprint_id = s.id
+            AND w.group_id = $1
+            AND w.status = 'done'
+    ) AS completed_work_count
+FROM sprints s
+WHERE s.group_id = $1
+ORDER BY s.created_at DESC;
 
 -- name: IsSprintOverlap :one
 SELECT EXISTS (

@@ -17,6 +17,8 @@ type Sprint struct {
 	Status           enum.SprintStatus
 	VelocityWork     *int32
 	VelocityEstimate *float64
+	TotalWork        *int32
+	CompletedWork    *int32
 	WorkDeleted      *int32
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
