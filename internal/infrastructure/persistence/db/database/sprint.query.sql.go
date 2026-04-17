@@ -227,21 +227,52 @@ func (q *Queries) GetSprintByID(ctx context.Context, id pgtype.UUID) (Sprint, er
 }
 
 const getSprintsByGroupID = `-- name: GetSprintsByGroupID :many
-SELECT id, group_id, name, goal, start_date, end_date, status, velocity_work, velocity_estimate, work_deleted, created_at, updated_at
-FROM sprints
-WHERE group_id = $1
-ORDER BY created_at DESC
+SELECT
+    s.id, s.group_id, s.name, s.goal, s.start_date, s.end_date, s.status, s.velocity_work, s.velocity_estimate, s.work_deleted, s.created_at, s.updated_at,
+    (
+        SELECT COUNT(*)
+        FROM works w
+        WHERE w.sprint_id = s.id
+            AND w.group_id = $1
+    ) AS total_work_count,
+    (
+        SELECT COUNT(*)
+        FROM works w
+        WHERE w.sprint_id = s.id
+            AND w.group_id = $1
+            AND w.status = 'done'
+    ) AS completed_work_count
+FROM sprints s
+WHERE s.group_id = $1
+ORDER BY s.created_at DESC
 `
 
-func (q *Queries) GetSprintsByGroupID(ctx context.Context, groupID pgtype.UUID) ([]Sprint, error) {
+type GetSprintsByGroupIDRow struct {
+	ID                 pgtype.UUID
+	GroupID            pgtype.UUID
+	Name               string
+	Goal               pgtype.Text
+	StartDate          pgtype.Date
+	EndDate            pgtype.Date
+	Status             string
+	VelocityWork       pgtype.Int4
+	VelocityEstimate   pgtype.Float8
+	WorkDeleted        pgtype.Int4
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	TotalWorkCount     int64
+	CompletedWorkCount int64
+}
+
+func (q *Queries) GetSprintsByGroupID(ctx context.Context, groupID pgtype.UUID) ([]GetSprintsByGroupIDRow, error) {
 	rows, err := q.db.Query(ctx, getSprintsByGroupID, groupID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Sprint
+	var items []GetSprintsByGroupIDRow
 	for rows.Next() {
-		var i Sprint
+		var i GetSprintsByGroupIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.GroupID,
@@ -255,6 +286,8 @@ func (q *Queries) GetSprintsByGroupID(ctx context.Context, groupID pgtype.UUID) 
 			&i.WorkDeleted,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.TotalWorkCount,
+			&i.CompletedWorkCount,
 		); err != nil {
 			return nil, err
 		}
