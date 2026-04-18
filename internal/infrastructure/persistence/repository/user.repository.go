@@ -46,11 +46,13 @@ func (r *UserRepository) GetUserByID(
 	}
 
 	return &entity.User{
-		ID:        u.ID.String(),
-		Email:     u.Email,
-		Status:    enum.UserStatus(u.Status),
-		CreatedAt: u.CreatedAt.Time,
-		AvatarURL: utils.Ptr(u.AvatarUrl.String),
+		ID:                   u.ID.String(),
+		Email:                u.Email,
+		Status:               enum.UserStatus(u.Status),
+		CreatedAt:            u.CreatedAt.Time,
+		HasEmailNotification: u.HasEmailNotification,
+		HasPushNotification:  u.HasPushNotification,
+		AvatarURL:            utils.Ptr(u.AvatarUrl.String),
 	}, nil
 }
 

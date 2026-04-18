@@ -709,7 +709,8 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 		}
 		if user != nil {
 			usersID = append(usersID, user.ID)
-			isSentMail = false
+			isSentMail = true
+			nonExistentReceivers = append(nonExistentReceivers, *createdInvite.Email)
 		} else {
 			isSentMail = true
 			nonExistentReceivers = append(nonExistentReceivers, *createdInvite.Email)
