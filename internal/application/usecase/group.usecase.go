@@ -92,30 +92,6 @@ func (uc *groupUseCase) CreateGroup(ctx context.Context, req *appdto.CreateGroup
 		1,
 	)
 
-	link := fmt.Sprintf("%s/groups/%s", apphelper.ResolveNotificationOrigin(ctx), group.ID)
-
-	uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
-		EventType:   appconstant.EventTypeGroupCreated,
-		SenderID:    user.ID,
-		ReceiverIDs: []string{user.ID},
-		Payload: appdto.TeamNotificationMessagePayload{
-			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeGroupCreated),
-			Message:         fmt.Sprintf("Bạn đã tạo nhóm %s thành công", group.Name),
-			Link:            utils.Ptr(link),
-			ImageURL:        nil,
-			CorrelationID:   group.ID,
-			CorrelationType: int(appconstant.CorrelationTypeGroup),
-		},
-		Metadata: appdto.TeamNotificationMessageMetadata{
-			IsSentMail:           false,
-			NonExistentReceivers: []string{},
-		},
-	}, &appdto.UserWithPermission{
-		ID:                   user.ID,
-		HasEmailNotification: user.HasEmailNotification,
-		HasPushNotification:  user.HasPushNotification,
-	})
-
 	return &appdto.BaseResponse[appdto.GroupResponse]{
 		Data:  groupM,
 		Error: nil,
@@ -292,36 +268,6 @@ func (uc *groupUseCase) UpdateGroup(ctx context.Context, req *appdto.UpdateGroup
 		nil,
 		0,
 	)
-
-	var usersID []string
-	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, updatedGroup.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	link := fmt.Sprintf("%s/groups/%s", apphelper.ResolveNotificationOrigin(ctx), group.ID)
-
-	uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
-		EventType:   appconstant.EventTypeGroupUpdated,
-		SenderID:    actor.ID,
-		ReceiverIDs: usersID,
-		Payload: appdto.TeamNotificationMessagePayload{
-			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeGroupUpdated),
-			Message:         fmt.Sprintf("Nhóm %s đã được cập nhật", updatedGroup.Name),
-			Link:            utils.Ptr(link),
-			ImageURL:        nil,
-			CorrelationID:   updatedGroup.ID,
-			CorrelationType: int(appconstant.CorrelationTypeGroup),
-		},
-		Metadata: appdto.TeamNotificationMessageMetadata{
-			IsSentMail:           false,
-			NonExistentReceivers: []string{},
-		},
-	}, &appdto.UserWithPermission{
-		ID:                   actor.ID,
-		HasEmailNotification: actor.HasEmailNotification,
-		HasPushNotification:  actor.HasPushNotification,
-	})
 
 	return &appdto.BaseResponse[appdto.GroupResponse]{
 		Data:  groupM,
@@ -776,7 +722,7 @@ func (uc *groupUseCase) AcceptInvite(ctx context.Context, req *appdto.AcceptInvi
 				ReceiverIDs: []string{user.ID},
 				Payload: appdto.TeamNotificationMessagePayload{
 					Title:           appconstant.GetDisplayTitle(appconstant.EventTypeInviteError),
-					Message:         fmt.Sprintf("Thành viên %s đã chấp nhận lời mời tham gia nhóm", user.Email),
+					Message:         fmt.Sprintf("Lời mời tham gia nhóm không hợp lệ: %s", err.ErrorInfo().Title),
 					Link:            utils.Ptr(link),
 					ImageURL:        nil,
 					CorrelationID:   invite.GroupID,

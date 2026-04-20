@@ -117,6 +117,27 @@ func (uc *sprintUseCase) ConsumeAISprintGenerationResult(ctx context.Context) fu
 		}
 
 		if message.Payload.Status != "SUCCESS" {
+			notificationErr := uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
+				EventType:   appconstant.EventTypeSprintGenerationFailed,
+				SenderID:    message.SenderID,
+				ReceiverIDs: []string{message.SenderID},
+				Payload: appdto.TeamNotificationMessagePayload{
+					Title:           appconstant.GetDisplayTitle(appconstant.EventTypeSprintGenerationFailed),
+					Message:         "AI sprint generation failed",
+					Link:            nil,
+					ImageURL:        nil,
+					CorrelationID:   message.GroupID,
+					CorrelationType: int(appconstant.CorrelationTypeSprint),
+				},
+				Metadata: appdto.TeamNotificationMessageMetadata{
+					IsSentMail: true,
+				},
+			}, nil)
+
+			if notificationErr != nil {
+				return rabbitmq.NackDiscard
+			}
+
 			return rabbitmq.Ack
 		}
 
@@ -529,7 +550,7 @@ func (uc *sprintUseCase) GetSimpleSprints(ctx context.Context, req *appdto.ListS
 }
 
 func (uc *sprintUseCase) UpdateSprint(ctx context.Context, req *appdto.UpdateSprintRequest) (*appdto.BaseResponse[appdto.SprintResponse], errorbase.AppError) {
-	actor, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
+	_, err := uc.authHelper.RequireRole(ctx, enum.GroupRoleManager)
 	if err != nil {
 		return &appdto.BaseResponse[appdto.SprintResponse]{
 			Data: nil,
@@ -577,37 +598,6 @@ func (uc *sprintUseCase) UpdateSprint(ctx context.Context, req *appdto.UpdateSpr
 	if err != nil {
 		return nil, err
 	}
-
-	var usersID []string
-	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, updatedSprint.GroupID)
-	if err != nil {
-		return nil, err
-	}
-
-	// publish sprint updated notification
-
-	link := apphelper.BuildSprintWorkboardLink(ctx, updatedSprint.GroupID, updatedSprint.ID)
-	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
-		EventType:   appconstant.EventTypeSprintUpdated,
-		SenderID:    actor.ID,
-		ReceiverIDs: usersID,
-		Payload: appdto.TeamNotificationMessagePayload{
-			Title:           appconstant.GetDisplayTitle(appconstant.EventTypeSprintUpdated),
-			Message:         fmt.Sprintf("Sprint %s đã được cập nhật", updatedSprint.Name),
-			Link:            utils.Ptr(link),
-			ImageURL:        nil,
-			CorrelationID:   updatedSprint.GroupID,
-			CorrelationType: int(appconstant.CorrelationTypeSprint),
-		},
-		Metadata: appdto.TeamNotificationMessageMetadata{
-			IsSentMail:           false,
-			NonExistentReceivers: []string{},
-		},
-	}, &appdto.UserWithPermission{
-		ID:                   actor.ID,
-		HasEmailNotification: actor.HasEmailNotification,
-		HasPushNotification:  actor.HasPushNotification,
-	})
 
 	return &appdto.BaseResponse[appdto.SprintResponse]{
 		Data:  appmapper.ToSprintResponse(updatedSprint),

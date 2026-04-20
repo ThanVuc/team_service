@@ -5,8 +5,6 @@ package appconstant
 const (
 	// Group Events (group.*)
 	// Triggered by organizational and membership changes
-	EventTypeGroupCreated      = "GROUP_CREATED"
-	EventTypeGroupUpdated      = "GROUP_UPDATED"
 	EventTypeGroupDeleted      = "GROUP_DELETED"
 	EventTypeMemberJoined      = "MEMBER_JOINED"
 	EventTypeMemberRemoved     = "MEMBER_REMOVED"
@@ -23,30 +21,18 @@ const (
 	EventTypeSprintCompleted = "SPRINT_COMPLETED"
 	EventTypeSprintCancelled = "SPRINT_CANCELLED"
 	// Additional sprint events
-	EventTypeSprintUpdated              = "SPRINT_UPDATED"
 	EventTypeSprintDeleted              = "SPRINT_DELETED"
 	EventTypeSprintGenerationSuccessful = "SPRINT_GENERATION_SUCCESSFUL"
 	EventTypeSprintGenerationFailed     = "SPRINT_GENERATION_FAILED"
 
 	// Work Events (work.*)
 	// Triggered by task/ticket lifecycle changes
-	EventTypeWorkCreated       = "WORK_CREATED"
 	EventTypeWorkAssigned      = "WORK_ASSIGNED"
 	EventTypeWorkStatusChanged = "WORK_STATUS_CHANGED"
 	EventTypeWorkCommented     = "WORK_COMMENTED"
 	// Additional work events
 	EventTypeWorkUpdated = "WORK_UPDATED"
 	EventTypeWorkDeleted = "WORK_DELETED"
-
-	// Checklist item events
-	EventTypeChecklistItemCreated = "CHECKLIST_ITEM_CREATED"
-	EventTypeChecklistItemUpdated = "CHECKLIST_ITEM_UPDATED"
-	EventTypeChecklistItemDeleted = "CHECKLIST_ITEM_DELETED"
-
-	// Comment events (can reuse WORK_COMMENTED for some flows, but explicit ones help clarity)
-	EventTypeCommentCreated = "COMMENT_CREATED"
-	EventTypeCommentUpdated = "COMMENT_UPDATED"
-	EventTypeCommentDeleted = "COMMENT_DELETED"
 )
 
 // Correlation Types
@@ -63,10 +49,6 @@ const (
 // This title is used for Push Notification headers and Email subjects
 func GetDisplayTitle(eventType string) string {
 	switch eventType {
-	case EventTypeGroupCreated:
-		return "Tạo nhóm thành công"
-	case EventTypeGroupUpdated:
-		return "Cập nhật nhóm"
 	case EventTypeGroupDeleted:
 		return "Nhóm đã bị xóa"
 	case EventTypeMemberJoined:
@@ -91,16 +73,12 @@ func GetDisplayTitle(eventType string) string {
 		return "Kết thúc Sprint"
 	case EventTypeSprintCancelled:
 		return "Hủy bỏ Sprint"
-	case EventTypeSprintUpdated:
-		return "Cập nhật Sprint"
 	case EventTypeSprintDeleted:
 		return "Sprint đã bị xóa"
 	case EventTypeSprintGenerationSuccessful:
 		return "Sprint đã được tạo bằng AI"
 	case EventTypeSprintGenerationFailed:
 		return "AI tạo Sprint thất bại"
-	case EventTypeWorkCreated:
-		return "Công việc mới"
 	case EventTypeWorkAssigned:
 		return "Giao việc cho bạn"
 	case EventTypeWorkStatusChanged:
@@ -111,18 +89,6 @@ func GetDisplayTitle(eventType string) string {
 		return "Cập nhật công việc"
 	case EventTypeWorkDeleted:
 		return "Công việc đã bị xóa"
-	case EventTypeChecklistItemCreated:
-		return "Checklist item mới"
-	case EventTypeChecklistItemUpdated:
-		return "Checklist item được cập nhật"
-	case EventTypeChecklistItemDeleted:
-		return "Checklist item đã bị xóa"
-	case EventTypeCommentCreated:
-		return "Bình luận mới"
-	case EventTypeCommentUpdated:
-		return "Bình luận đã được cập nhật"
-	case EventTypeCommentDeleted:
-		return "Bình luận đã bị xóa"
 	default:
 		return "Thông báo hệ thống"
 	}
