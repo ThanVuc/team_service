@@ -251,20 +251,7 @@ func (uc *sprintUseCase) ConsumeAISprintGenerationResult(ctx context.Context) fu
 			return rabbitmq.NackDiscard
 		}
 
-		var origin string
-		if strings.TrimSpace(message.JobID) != "" {
-			cacheKey := appconstant.CacheAISprintOriginPrefix + message.JobID
-			var cachedOrigin []byte
-			if cacheErr := uc.cacheRepo.Get(ctx, cacheKey, &cachedOrigin); cacheErr == nil {
-				origin = strings.TrimSpace(string(cachedOrigin))
-			}
-		}
-
-		var link *string
-		if origin != "" {
-			generatedLink := fmt.Sprintf("%s/groups/%s?tab=workboard&sprint_id=%s", origin, message.GroupID, createdSprint.ID)
-			link = utils.Ptr(generatedLink)
-		}
+		link := apphelper.BuildSprintWorkboardLink(ctx, message.GroupID, createdSprint.ID)
 
 		notificationMessage := "AI sprint generation completed successfully"
 		if len(message.Payload.Tasks) > 0 {
@@ -278,7 +265,7 @@ func (uc *sprintUseCase) ConsumeAISprintGenerationResult(ctx context.Context) fu
 			Payload: appdto.TeamNotificationMessagePayload{
 				Title:           appconstant.GetDisplayTitle(appconstant.EventTypeSprintGenerationSuccessful),
 				Message:         notificationMessage,
-				Link:            link,
+				Link:            utils.Ptr(link),
 				ImageURL:        nil,
 				CorrelationID:   message.GroupID,
 				CorrelationType: int(appconstant.CorrelationTypeSprint),
@@ -739,7 +726,7 @@ func (uc *sprintUseCase) DeleteSprint(ctx context.Context, req *appdto.DeleteSpr
 		return nil, err
 	}
 
-	link := fmt.Sprintf("%s/groups/%s/sprints", apphelper.ResolveNotificationOrigin(ctx), sprint.GroupID)
+	link := apphelper.BuildSprintsTabLink(ctx, sprint.GroupID)
 	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeSprintDeleted,
 		SenderID:    actor.ID,
@@ -917,7 +904,7 @@ func (uc *sprintUseCase) DeleteDraftSprint(ctx context.Context, req *appdto.Dele
 		return nil, err
 	}
 
-	link := fmt.Sprintf("%s/groups/%s/sprints", apphelper.ResolveNotificationOrigin(ctx), sprint.GroupID)
+	link := apphelper.BuildSprintsTabLink(ctx, sprint.GroupID)
 	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeSprintDeleted,
 		SenderID:    actor.ID,

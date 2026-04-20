@@ -467,6 +467,22 @@ func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Group
 	return i, err
 }
 
+const updateGroupOwner = `-- name: UpdateGroupOwner :exec
+UPDATE groups
+SET owner_id = $1, updated_at = NOW()
+WHERE id = $2 AND deleted_at IS NULL
+`
+
+type UpdateGroupOwnerParams struct {
+	OwnerID pgtype.UUID
+	ID      pgtype.UUID
+}
+
+func (q *Queries) UpdateGroupOwner(ctx context.Context, arg UpdateGroupOwnerParams) error {
+	_, err := q.db.Exec(ctx, updateGroupOwner, arg.OwnerID, arg.ID)
+	return err
+}
+
 const updateRoleMember = `-- name: UpdateRoleMember :one
 UPDATE group_members gm
 SET role = $1

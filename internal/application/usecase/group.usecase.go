@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"team_service/internal/adapter/constant/r2"
+	teamprefix "team_service/internal/adapter/constant/team_prefix"
 	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
 	apphelper "team_service/internal/application/common/helper"
@@ -120,8 +121,15 @@ func MapRoleToString(role string) enum.GroupRole {
 
 func (uc *groupUseCase) ListGroups(ctx context.Context, req *appdto.ListGroupsRequest) (*appdto.BaseResponse[appdto.ListGroupsResponse], errorbase.AppError) {
 	_ = req
+	org := utils.GetOriginFromIncomingContext(ctx)
+	fmt.Printf("111111111111111111111111111111111111111111 %s\n", org) // Debug log to verify origin extraction
+	originRs := apphelper.ResolveNotificationOrigin(ctx)
+	fmt.Printf("22222222222222222222222222222222222222222 %s\n", originRs) // Debug log to verify resolved origin
+	link := fmt.Sprintf("%s/%s/groups/", apphelper.ResolveNotificationOrigin(ctx), teamprefix.TeamPrefix)
+	fmt.Printf("33333333333333333333333333333333333333333 %s\n", link) // Debug log to verify link construction
 
 	userID := utils.GetUserIDFromOutgoingContext(ctx)
+
 	groups, err := uc.groupRepo.GetGroupsByUserID(ctx, userID)
 	if err != nil {
 		return &appdto.BaseResponse[appdto.ListGroupsResponse]{
@@ -332,7 +340,7 @@ func (uc *groupUseCase) DeleteGroup(ctx context.Context, req *appdto.DeleteGroup
 		return nil, err
 	}
 
-	link := fmt.Sprintf("%s/groups/", apphelper.ResolveNotificationOrigin(ctx))
+	link := fmt.Sprintf("%s/%s/group/", apphelper.ResolveNotificationOrigin(ctx), teamprefix.TeamPrefix)
 
 	var usersID []string
 	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, req.GroupID)
@@ -472,6 +480,11 @@ func (uc *groupUseCase) UpdateMemberRole(ctx context.Context, req *appdto.Update
 			}
 
 			_, err := repo.GroupRepository().UpdateMemberRole(ctx, actor.ID, req.GroupID, string(enum.GroupRoleMember))
+			if err != nil {
+				return err
+			}
+
+			err = repo.GroupRepository().UpdateGroupOwner(ctx, req.MemberId, req.GroupID)
 			if err != nil {
 				return err
 			}
@@ -708,7 +721,7 @@ func (uc *groupUseCase) CreateInvite(ctx context.Context, req *appdto.CreateInvi
 func (uc *groupUseCase) AcceptInvite(ctx context.Context, req *appdto.AcceptInviteRequest) (*appdto.BaseResponse[appdto.AcceptInviteResponse], errorbase.AppError) {
 	origin := apphelper.ResolveNotificationOrigin(ctx)
 
-	link := fmt.Sprintf("%s/groups/", origin)
+	link := fmt.Sprintf("%s/%s/group/", origin, teamprefix.TeamPrefix)
 
 	invite, user, err := uc.validator.ValidateAcceptInvitation(ctx, req)
 	if err != nil {
@@ -897,7 +910,7 @@ func (uc *groupUseCase) LeaveGroup(ctx context.Context, req *appdto.LeaveGroupRe
 	}
 
 	domain := apphelper.ResolveNotificationOrigin(ctx)
-	link := fmt.Sprintf("%s/groups/%s", domain, req.GroupID)
+	link := fmt.Sprintf("%s/%s/group/%s", domain, teamprefix.TeamPrefix, req.GroupID)
 
 	var usersID []string
 	usersID, err = uc.groupRepo.GetListUserIDByGroupID(ctx, req.GroupID)
