@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	teamprefix "team_service/internal/adapter/constant/team_prefix"
 	appconstant "team_service/internal/application/common/constant"
 	appdto "team_service/internal/application/common/dto"
 	apphelper "team_service/internal/application/common/helper"
@@ -336,7 +337,7 @@ func (uc *workUseCase) DeleteWork(ctx context.Context, req *appdto.DeleteWorkReq
 		return nil, err
 	}
 
-	link := fmt.Sprintf("%s/groups/%s/works", apphelper.ResolveNotificationOrigin(ctx), actor.GroupId)
+	link := fmt.Sprintf("%s/%s/group/%s?tab=workboard", apphelper.ResolveNotificationOrigin(ctx), teamprefix.TeamPrefix, actor.GroupId)
 	_ = uc.notificationHelper.PublishTeamNotificationMessage(ctx, appdto.TeamNotificationMessage{
 		EventType:   appconstant.EventTypeWorkDeleted,
 		SenderID:    actor.ID,

@@ -626,3 +626,40 @@ func (r *GroupRepository) GetListUserIDByGroupID(
 
 	return userIDs, nil
 }
+
+func (r *GroupRepository) UpdateGroupOwner(
+	ctx context.Context,
+	newOwnerID string,
+	groupID string,
+) errorbase.AppError {
+	var newOwnerUUID pgtype.UUID
+	if err := newOwnerUUID.Scan(newOwnerID); err != nil {
+		return errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse new owner id"),
+		)
+	}
+
+	var groupUUID pgtype.UUID
+	if err := groupUUID.Scan(groupID); err != nil {
+		return errorbase.New(
+			errdict.ErrInternal,
+			errorbase.WithDetail("failed to parse group id"),
+		)
+	}
+
+	err := r.q.UpdateGroupOwner(ctx, database.UpdateGroupOwnerParams{
+		OwnerID: newOwnerUUID,
+		ID:      groupUUID,
+	})
+
+	if err != nil {
+		return errorbase.Wrap(
+			err,
+			errdict.ErrInternal,
+			errorbase.WithDetail(fmt.Sprintf("failed to update group owner to user=%s for group=%s", newOwnerID, groupID)),
+		)
+	}
+
+	return nil
+}

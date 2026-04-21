@@ -175,3 +175,8 @@ WHERE group_id = $1 AND role = 'viewer';
 SELECT user_id
 FROM group_members
 WHERE group_id = $1;
+
+-- name: UpdateGroupOwner :exec
+UPDATE groups
+SET owner_id = $1, updated_at = NOW()
+WHERE id = $2 AND deleted_at IS NULL;
