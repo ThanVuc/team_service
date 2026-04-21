@@ -24,4 +24,5 @@ type GroupRepository interface {
 	GetSimpleUsersByGroupID(ctx context.Context, groupID string) ([]*appdto.SimpleUserResponse, errorbase.AppError)
 	CountViewerByGroupID(ctx context.Context, groupID string) (int64, errorbase.AppError)
 	GetListUserIDByGroupID(ctx context.Context, groupID string) ([]string, errorbase.AppError)
+	UpdateGroupOwner(ctx context.Context, newOwnerID string, groupID string) errorbase.AppError
 }
